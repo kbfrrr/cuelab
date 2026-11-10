@@ -1,0 +1,46 @@
+@props(['title' => 'Welcome', 'informationUnavailable' => false])
+<!DOCTYPE html>
+<html lang="en" data-theme="light">
+<head>
+    <meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1">
+    <title>{{ $title }} · CueLab</title>
+    <meta name="description" content="Discover CueLab. Explore billiards, venue information, and upcoming booking and tournament services.">
+    <meta name="theme-color" content="#153d30">
+    <script>try { document.documentElement.dataset.theme = localStorage.getItem('cuelab-theme') || (matchMedia('(prefers-color-scheme: dark)').matches ? 'dark' : 'light'); } catch(e) {}</script>
+    @vite(['resources/css/app.css','resources/js/app.js'])
+</head>
+<body x-data="siteShell" @keydown.escape.window="menuOpen = false; chatOpen = false">
+<a class="skip-link" href="#main">Skip to content</a>
+<header class="site-header">
+    <div class="container header-inner">
+        <a class="brand" href="{{ route('home') }}" aria-label="CueLab home"><span class="brand-ball">8</span> CueLab<span class="brand-dot">.</span></a>
+        <nav class="desktop-nav" aria-label="Main navigation">
+            @foreach (['home'=>'Home','about'=>'About','rates'=>'Rates & services','tournaments'=>'Tournaments','contact'=>'Contact'] as $name=>$label)
+                <a href="{{ route($name) }}" @if(request()->routeIs($name)) aria-current="page" @endif>{{ $label }}</a>
+            @endforeach
+        </nav>
+        <div class="header-actions">
+            <button class="icon-button" @click="toggleTheme" :aria-label="theme === 'dark' ? 'Switch to light theme' : 'Switch to dark theme'"><span x-text="theme === 'dark' ? '☀' : '◐'" aria-hidden="true">◐</span></button>
+            <a class="button button-small desktop-book" href="{{ route('booking') }}">Plan a visit <span aria-hidden="true">↗</span></a>
+            <button class="icon-button menu-button" @click="menuOpen = !menuOpen" :aria-expanded="menuOpen" aria-controls="mobile-nav" aria-label="Toggle navigation">☰</button>
+        </div>
+    </div>
+    <nav id="mobile-nav" class="mobile-nav container" x-show="menuOpen" x-cloak aria-label="Mobile navigation">
+        @foreach (['home'=>'Home','about'=>'About','rates'=>'Rates & services','tournaments'=>'Tournaments','contact'=>'Contact','booking'=>'Plan a visit'] as $name=>$label)
+            <a href="{{ route($name) }}" @if(request()->routeIs($name)) aria-current="page" @endif>{{ $label }}</a>
+        @endforeach
+    </nav>
+</header>
+@if($informationUnavailable)<div class="service-notice container" role="status">Live venue information is temporarily unavailable. You can still explore the site.</div>@endif
+<main id="main">{{ $slot }}</main>
+<footer class="site-footer">
+    <div class="container footer-top"><div><a class="brand" href="{{ route('home') }}"><span class="brand-ball">8</span> CueLab.</a><p>A place for the game. A reason to get together.</p></div><a class="text-link" href="{{ route('contact') }}">Get in touch <span aria-hidden="true">↗</span></a></div>
+    <div class="container footer-bottom"><span>© {{ date('Y') }} CueLab</span><span>Venue details pending verification</span><a href="{{ route('privacy') }}">Privacy notice</a></div>
+</footer>
+<aside class="chat-panel" x-show="chatOpen" x-cloak @click.outside="chatOpen = false" role="region" aria-labelledby="chat-title">
+    <div class="chat-heading"><div><span class="eyebrow">AI assistant</span><h2 id="chat-title">CueLab assistant</h2></div><button class="icon-button" @click="chatOpen = false; $refs.chatToggle.focus()" aria-label="Close AI assistant">×</button></div>
+    <p>The AI assistant is being prepared. It cannot answer questions or make reservations yet.</p>
+    <a class="button" href="{{ route('contact') }}">Talk to staff ↗</a><a class="chat-privacy" href="{{ route('privacy') }}">How your information will be used</a>
+</aside>
+<button class="chat-toggle" x-ref="chatToggle" @click="chatOpen = !chatOpen" :aria-expanded="chatOpen" aria-controls="chat-title"><span aria-hidden="true">✳</span> CueLab AI <span class="chat-badge">Soon</span></button>
+</body></html>
