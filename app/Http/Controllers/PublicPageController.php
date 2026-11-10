@@ -5,6 +5,7 @@ namespace App\Http\Controllers;
 use App\Models\BusinessSetting;
 use App\Models\OperatingHour;
 use App\Models\ServiceRate;
+use App\Models\Tournament;
 use App\Services\ReservationService;
 use Illuminate\Database\QueryException;
 use Illuminate\View\View;
@@ -13,12 +14,14 @@ class PublicPageController extends Controller
 {
     public function show(string $page = 'home'): View
     {
+        $tournaments = collect();
         $settings = [];
         $rates = collect();
         $hours = collect();
         $informationUnavailable = false;
         $bookingReady = false;
         try {
+            $tournaments = Tournament::whereIn('status', ['published', 'closed'])->where('ends_at', '>', now())->orderBy('starts_at')->get();
             $bookingReady = app(ReservationService::class)->enabled();
             $settings = BusinessSetting::where('is_verified', true)->get()->mapWithKeys(fn (BusinessSetting $setting): array => [$setting->key => $setting->value])->all();
             $rates = ServiceRate::where('is_verified', true)->where('is_active', true)->orderBy('name')->get();
@@ -32,6 +35,6 @@ class PublicPageController extends Controller
             $informationUnavailable = true;
         }
 
-        return view('pages.'.$page, compact('settings', 'rates', 'hours', 'informationUnavailable', 'bookingReady'));
+        return view('pages.'.$page, compact('tournaments', 'settings', 'rates', 'hours', 'informationUnavailable', 'bookingReady'));
     }
 }

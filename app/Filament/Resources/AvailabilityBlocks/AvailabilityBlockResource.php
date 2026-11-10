@@ -23,6 +23,11 @@ class AvailabilityBlockResource extends Resource
         return (bool) auth()->user()?->is_staff;
     }
 
+    public static function canDelete(Model $record): bool
+    {
+        return ! $record->tournament_id && (bool) auth()->user()?->is_staff;
+    }
+
     public static function canEdit(Model $record): bool
     {
         return false;

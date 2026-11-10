@@ -8,6 +8,8 @@ use App\Models\BusinessSetting;
 use App\Models\OperatingHour;
 use App\Models\Reservation;
 use App\Models\ServiceRate;
+use App\Models\Tournament;
+use App\Models\TournamentRegistration;
 use App\Observers\StaffAuditObserver;
 use Illuminate\Cache\RateLimiting\Limit;
 use Illuminate\Http\Request;
@@ -32,7 +34,10 @@ class AppServiceProvider extends ServiceProvider
         foreach (['review' => 20, 'store' => 10, 'lookup' => 10, 'status' => 30] as $endpoint => $attempts) {
             RateLimiter::for('booking-'.$endpoint, fn (Request $request) => Limit::perMinute($attempts)->by($request->ip()));
         }
-        foreach ([BusinessSetting::class, OperatingHour::class, ServiceRate::class, BilliardTable::class, Reservation::class, AvailabilityBlock::class] as $model) {
+        foreach (['lookup', 'register'] as $endpoint) {
+            RateLimiter::for('tournament-'.$endpoint, fn (Request $request) => Limit::perMinute(10)->by($request->ip()));
+        }
+        foreach ([Tournament::class, TournamentRegistration::class, BusinessSetting::class, OperatingHour::class, ServiceRate::class, BilliardTable::class, Reservation::class, AvailabilityBlock::class] as $model) {
             $model::observe(StaffAuditObserver::class);
         }
     }

@@ -2,6 +2,7 @@
 
 use App\Http\Controllers\BookingController;
 use App\Http\Controllers\PublicPageController;
+use App\Http\Controllers\TournamentController;
 use App\Http\Middleware\PrivateBookingResponse;
 use Illuminate\Support\Facades\Route;
 
@@ -16,4 +17,11 @@ Route::middleware(PrivateBookingResponse::class)->group(function (): void {
     Route::post('/booking/lookup', [BookingController::class, 'lookup'])->middleware('throttle:booking-lookup')->name('booking.lookup');
     Route::get('/booking/status', [BookingController::class, 'status'])->middleware('throttle:booking-status')->name('booking.status');
 
+});
+
+Route::middleware(PrivateBookingResponse::class)->group(function (): void {
+    Route::get('/tournaments/registration/status', [TournamentController::class, 'status'])->name('tournament.status');
+    Route::post('/tournaments/registration/lookup', [TournamentController::class, 'lookup'])->middleware('throttle:tournament-lookup')->name('tournament.lookup');
+    Route::get('/tournaments/{tournament}', [TournamentController::class, 'show'])->name('tournament.show');
+    Route::post('/tournaments/{tournament}/register', [TournamentController::class, 'register'])->middleware('throttle:tournament-register')->name('tournament.register');
 });
