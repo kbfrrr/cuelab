@@ -5,6 +5,7 @@ namespace App\Http\Controllers;
 use App\Models\BusinessSetting;
 use App\Models\OperatingHour;
 use App\Models\ServiceRate;
+use App\Services\ReservationService;
 use Illuminate\Database\QueryException;
 use Illuminate\View\View;
 
@@ -16,7 +17,9 @@ class PublicPageController extends Controller
         $rates = collect();
         $hours = collect();
         $informationUnavailable = false;
+        $bookingReady = false;
         try {
+            $bookingReady = app(ReservationService::class)->enabled();
             $settings = BusinessSetting::where('is_verified', true)->get()->mapWithKeys(fn (BusinessSetting $setting): array => [$setting->key => $setting->value])->all();
             $rates = ServiceRate::where('is_verified', true)->where('is_active', true)->orderBy('name')->get();
             $hours = OperatingHour::where('is_verified', true)
@@ -29,6 +32,6 @@ class PublicPageController extends Controller
             $informationUnavailable = true;
         }
 
-        return view('pages.'.$page, compact('settings', 'rates', 'hours', 'informationUnavailable'));
+        return view('pages.'.$page, compact('settings', 'rates', 'hours', 'informationUnavailable', 'bookingReady'));
     }
 }

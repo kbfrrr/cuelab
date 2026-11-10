@@ -55,6 +55,6 @@ class PublicPagesTest extends TestCase
         $this->get('/contact')->assertSee('Messages cannot be submitted yet.')->assertSee('fieldset disabled', false);
         $this->get('/booking')->assertSee('No reservations are being accepted');
         $this->post('/contact', ['message' => 'test'])->assertStatus(405);
-        $this->post('/booking')->assertStatus(405);
+        $this->post('/booking')->assertStatus(419);
     }
 }
