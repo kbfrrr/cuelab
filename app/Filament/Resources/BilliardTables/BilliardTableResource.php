@@ -18,6 +18,12 @@ use Illuminate\Database\Eloquent\Model;
 
 class BilliardTableResource extends Resource
 {
+    protected static string|\UnitEnum|null $navigationGroup = 'Venue';
+
+    protected static ?int $navigationSort = 4;
+
+    protected static string|\BackedEnum|null $navigationIcon = 'heroicon-o-squares-2x2';
+
     protected static ?string $model = BilliardTable::class;
 
     public static function canViewAny(): bool

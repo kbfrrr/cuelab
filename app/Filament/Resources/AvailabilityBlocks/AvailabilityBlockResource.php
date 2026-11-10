@@ -16,6 +16,12 @@ use Illuminate\Database\Eloquent\Model;
 
 class AvailabilityBlockResource extends Resource
 {
+    protected static string|\UnitEnum|null $navigationGroup = 'Venue';
+
+    protected static ?int $navigationSort = 5;
+
+    protected static string|\BackedEnum|null $navigationIcon = 'heroicon-o-no-symbol';
+
     protected static ?string $model = AvailabilityBlock::class;
 
     public static function canViewAny(): bool

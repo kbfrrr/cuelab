@@ -12,6 +12,12 @@ use Illuminate\Database\Eloquent\Model;
 
 class StaffActionResource extends Resource
 {
+    protected static string|\UnitEnum|null $navigationGroup = 'Administration';
+
+    protected static ?int $navigationSort = 9;
+
+    protected static string|\BackedEnum|null $navigationIcon = 'heroicon-o-clipboard-document-list';
+
     protected static ?string $model = StaffAction::class;
 
     public static function canViewAny(): bool

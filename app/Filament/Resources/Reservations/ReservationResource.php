@@ -15,6 +15,12 @@ use Illuminate\Database\Eloquent\Model;
 
 class ReservationResource extends Resource
 {
+    protected static string|\UnitEnum|null $navigationGroup = 'Operations';
+
+    protected static ?int $navigationSort = 1;
+
+    protected static string|\BackedEnum|null $navigationIcon = 'heroicon-o-calendar-days';
+
     protected static ?string $model = Reservation::class;
 
     public static function canViewAny(): bool

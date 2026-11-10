@@ -17,6 +17,12 @@ use Illuminate\Database\Eloquent\Model;
 
 class OperatingHourResource extends Resource
 {
+    protected static string|\UnitEnum|null $navigationGroup = 'Venue';
+
+    protected static ?int $navigationSort = 7;
+
+    protected static string|\BackedEnum|null $navigationIcon = 'heroicon-o-clock';
+
     protected static ?string $model = OperatingHour::class;
 
     public static function canViewAny(): bool

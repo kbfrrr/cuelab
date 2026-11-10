@@ -18,6 +18,12 @@ use Illuminate\Database\Eloquent\Model;
 
 class TournamentResource extends Resource
 {
+    protected static string|\UnitEnum|null $navigationGroup = 'Operations';
+
+    protected static ?int $navigationSort = 2;
+
+    protected static string|\BackedEnum|null $navigationIcon = 'heroicon-o-trophy';
+
     protected static ?string $model = Tournament::class;
 
     public static function canViewAny(): bool
