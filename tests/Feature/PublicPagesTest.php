@@ -33,6 +33,18 @@ class PublicPagesTest extends TestCase
         $this->get('/')->assertOk()->assertDontSee('Unapproved address');
     }
 
+    public function test_home_links_to_the_same_venue_policy_on_rates(): void
+    {
+        $policy = 'CueLab sells snacks, non-alcoholic drinks, and alcoholic drinks. Guests may bring their own alcohol and rice meals. Rice meals are bring-your-own only. Ask CueLab staff where vaping is permitted.';
+
+        $this->get(route('home'))->assertOk()
+            ->assertSeeTextInOrder(['Plan your visit', $policy, 'House rules'])
+            ->assertSee('href="'.route('rates').'#house-rules"', false);
+        $this->get(route('rates'))->assertOk()
+            ->assertSee('id="house-rules"', false)
+            ->assertSeeTextInOrder(['House rules', $policy]);
+    }
+
     public function test_homepage_remains_available_when_business_storage_fails(): void
     {
         Schema::drop('business_settings');

@@ -71,6 +71,9 @@
                 @endif
             </article>
         </div>
+        <p class="lead">{{ config('cuelab.venue_policy') }}
+            <a class="cue-text-link" href="{{ route('rates') }}#house-rules">House rules <x-heroicon-o-arrow-right aria-hidden="true" /></a>
+        </p>
     </section>
 
     <section class="container cue-explore" aria-labelledby="cue-explore-title" data-cue-chapter>

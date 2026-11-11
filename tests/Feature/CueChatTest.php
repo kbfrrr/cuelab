@@ -119,8 +119,42 @@ class CueChatTest extends TestCase
             ->assertJsonPath('actions.0.url', route('booking'));
         $this->postJson('/cuechat/message', ['message' => str_repeat('A1', 16)])->assertOk()
             ->assertJsonPath('actions.0.url', route('booking'));
-        $this->postJson('/cuechat/message', ['message' => 'My email is guest@example.test'])->assertOk()
+        $this->postJson('/cuechat/message', ['message' => 'Can I bring beer? My email is guest@example.test'])->assertOk()
             ->assertJsonPath('actions.0.url', route('booking'));
+        Http::assertNothingSent();
+    }
+
+    public function test_chat_answers_venue_policy_questions_with_dify_disabled(): void
+    {
+        config(['services.dify.intake_key' => '', 'services.dify.faq_key' => '']);
+        Http::fake();
+
+        foreach (['Do you sell snacks and drinks?', 'Do you sell beer?', 'Pwede ba magdala ng alak?', 'Pwede ba magdala ng rice meal?', 'Do you sell rice meals?'] as $message) {
+            $this->postJson('/cuechat/message', compact('message'))->assertOk()
+                ->assertJsonPath('reply', config('cuelab.venue_policy'))
+                ->assertJsonPath('actions.0.url', route('rates').'#house-rules');
+        }
+
+        $this->postJson('/cuechat/message', ['message' => 'Saan puwedeng mag-vape?'])->assertOk()
+            ->assertJsonPath('reply', config('cuelab.venue_policy'))
+            ->assertJsonPath('actions.0.url', route('contact'));
+
+        Http::assertNothingSent();
+    }
+
+    public function test_chat_refers_menu_prices_and_other_outside_food_to_staff(): void
+    {
+        Http::fake();
+
+        foreach ([
+            'Magkano ang beer?' => 'Ask CueLab staff for the current menu and prices.',
+            'Can I bring pizza?' => 'Check with CueLab staff before bringing other food or drinks.',
+        ] as $message => $staffAdvice) {
+            $this->postJson('/cuechat/message', compact('message'))->assertOk()
+                ->assertJsonPath('reply', config('cuelab.venue_policy').' '.$staffAdvice)
+                ->assertJsonPath('actions.0.url', route('contact'));
+        }
+
         Http::assertNothingSent();
     }
 

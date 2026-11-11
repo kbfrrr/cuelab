@@ -41,7 +41,7 @@ class CueChatController extends Controller
             return $this->status();
         }
         if ($message === 'Ask about CueLab') {
-            return $this->reply('Ask me about rates, hours, or visiting CueLab.');
+            return $this->reply('Ask me about rates, hours, or house rules.');
         }
         $withoutDates = preg_replace('/\b(?:\d{4}-\d{1,2}-\d{1,2}|\d{1,2}\/\d{1,2}\/\d{2,4})\b/u', '', $message);
         if (preg_match('/@|\b[a-z0-9]{32}\b|(?<!\d)(?:\d[\s().+-]*){7,}/iu', $withoutDates)) {
@@ -50,6 +50,11 @@ class CueChatController extends Controller
         if (preg_match('/\b(?:holds?|grace period|late arrival|15\s*(?:mins?|minutes?)\b)\b/iu', $message) &&
             preg_match('/\b(?:holds?|grace period|late arrival|late|policy|reserve|reservation)\b/iu', $message)) {
             return $this->referral('Please ask CueLab staff about its table-hold policy.');
+        }
+
+        $venuePolicy = $this->venuePolicyReply($message);
+        if ($venuePolicy !== null) {
+            return $venuePolicy;
         }
 
         $user = $session->get('cuechat.user') ?? (string) Str::uuid();
@@ -72,6 +77,36 @@ class CueChatController extends Controller
             'clarify' => $this->reply('Are you asking about a new reservation, an existing booking, or the venue?'),
             default => $this->referral(),
         };
+    }
+
+    /** @return array{reply: string, actions: list<array{label: string, url: string}>}|null */
+    private function venuePolicyReply(string $message): ?array
+    {
+        $vaping = preg_match('/\b(?:vapes?|vaping|magvape|nagvavape|e[\s-]?cigarettes?)\b/iu', $message);
+        $bringYourOwn = preg_match('/\b(?:alcohol(?:ic)?|beers?|wine|liquor|alak|serbesa|rice[\s-]+meals?|kanin)\b/iu', $message);
+        $foodOrDrink = preg_match('/\b(?:snacks?|drinks?|beverages?|soda|softdrinks?|inumin|tubig|food|pagkain|merienda|meryenda|pulutan|baon|baunin|pizza|meals?)\b/iu', $message);
+        $menu = preg_match('/\bmenu\b/iu', $message);
+
+        if (! $vaping && ! $bringYourOwn && ! $foodOrDrink && ! $menu) {
+            return null;
+        }
+
+        $policy = config('cuelab.venue_policy');
+        if ($vaping) {
+            return $this->referral($policy);
+        }
+
+        $asksPriceOrSelection = preg_match('/\b(?:prices?|costs?|how much|magkano|what kinds? of|what (?:snacks|drinks|food)|anong)\b/iu', $message);
+        $riceMeal = preg_match('/\b(?:rice[\s-]+meals?|kanin)\b/iu', $message);
+        if ($menu || ($asksPriceOrSelection && ! $riceMeal)) {
+            return $this->referral($policy.' Ask CueLab staff for the current menu and prices.');
+        }
+
+        if (! $bringYourOwn && preg_match('/\b(?:outside|bring|magdala|dala|baon|baunin|bitbit|magpasok)\b/iu', $message)) {
+            return $this->referral($policy.' Check with CueLab staff before bringing other food or drinks.');
+        }
+
+        return $this->reply($policy, 'House rules', route('rates').'#house-rules');
     }
 
     private function rates(string $message): array
