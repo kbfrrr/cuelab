@@ -2,6 +2,7 @@
 
 namespace App\Providers;
 
+use App\Filament\StaffLogoutResponse;
 use App\Models\AvailabilityBlock;
 use App\Models\BilliardTable;
 use App\Models\BusinessSetting;
@@ -11,6 +12,7 @@ use App\Models\ServiceRate;
 use App\Models\Tournament;
 use App\Models\TournamentRegistration;
 use App\Observers\StaffAuditObserver;
+use Filament\Auth\Http\Responses\Contracts\LogoutResponse;
 use Illuminate\Cache\RateLimiting\Limit;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\RateLimiter;
@@ -23,7 +25,7 @@ class AppServiceProvider extends ServiceProvider
      */
     public function register(): void
     {
-        //
+        $this->app->bind(LogoutResponse::class, StaffLogoutResponse::class);
     }
 
     /**

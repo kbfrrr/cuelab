@@ -28,6 +28,16 @@ class StaffAccessTest extends TestCase
         }
     }
 
+    public function test_staff_logout_redirects_to_landing_page(): void
+    {
+        $this->actingAs(User::factory()->create(['is_staff' => true]))
+            ->post(route('filament.admin.auth.logout'))
+            ->assertRedirectToRoute('home');
+
+        $this->assertGuest();
+        $this->get('/admin')->assertRedirect('/admin/login');
+    }
+
     public function test_staff_flag_cannot_be_set_by_mass_assignment(): void
     {
         $user = new User;
