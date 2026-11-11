@@ -28,6 +28,7 @@ RUN npm run build
 
 FROM application
 COPY --from=assets /app/public/build ./public/build
+RUN chmod -R u+rwX storage bootstrap/cache
 
 EXPOSE 80
 CMD ["sh", "deploy/render-start.sh"]
