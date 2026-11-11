@@ -38,6 +38,37 @@
 .fi-sidebar-item.fi-active > .fi-sidebar-item-btn > .fi-sidebar-item-label { color:var(--cl-accent); }
 .fi-header-heading { font-size:1.55rem; letter-spacing:-.025em; }
 .fi-section, .fi-ta-ctn, .fi-simple-main { background:var(--cl-surface); border-radius:14px; }
+
+.fi-resource-reservations .fi-ta-table > thead > tr {
+    background: color-mix(in srgb, var(--cl-soft) 45%, var(--cl-surface));
+}
+
+.fi-resource-reservations .fi-ta-text-description {
+    color: var(--cl-muted);
+    white-space: normal;
+    overflow-wrap: anywhere;
+}
+
+.fi-resource-reservations .fi-ta-cell-customer-name .fi-ta-text-description {
+    min-width: 11ch;
+    font-variant-numeric: tabular-nums;
+}
+
+.fi-resource-reservations .fi-ta-cell-billiard-table-name .fi-ta-text-description {
+    font-variant-numeric: tabular-nums;
+}
+
+.fi-resource-reservations .fi-ta-cell .fi-ta-actions > .fi-dropdown > .fi-dropdown-trigger > button {
+    min-height: 2.75rem;
+    min-width: 2.75rem;
+}
+
+@media (width < 40rem) {
+    .fi-resource-reservations .fi-ta-table > tbody > tr > .fi-ta-cell:has(.fi-ta-actions) {
+        padding-block: .75rem .25rem;
+    }
+}
+
 .cl-analytics { font-size:.875rem; color:var(--cl-ink); }
 .cl-analytics ::selection { background:var(--cl-soft); color:var(--cl-ink); }
 .cl-analytics a:focus-visible, .cl-analytics select:focus-visible { outline:2px solid var(--cl-accent); outline-offset:4px; }

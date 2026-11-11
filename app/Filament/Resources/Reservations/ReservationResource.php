@@ -16,9 +16,11 @@ use Filament\Notifications\Notification;
 use Filament\Resources\Resource;
 use Filament\Schemas\Components\Utilities\Get;
 use Filament\Schemas\Schema;
+use Filament\Support\Enums\FontWeight;
 use Filament\Tables\Columns\TextColumn;
 use Filament\Tables\Filters\SelectFilter;
 use Filament\Tables\Table;
+use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Validation\ValidationException;
 
@@ -67,26 +69,90 @@ class ReservationResource extends Resource
         $statuses = ['pending' => 'Pending approval', 'confirmed' => 'Confirmed', 'rejected' => 'Rejected',
             'cancelled' => 'Cancelled', 'expired' => 'Expired', 'no_show' => 'No-show'];
 
-        return $table->poll('15s')->columns([
-            TextColumn::make('reference')->searchable()->sortable(),
-            TextColumn::make('billiardTable.name')->searchable()->sortable(),
-            TextColumn::make('customer_name')->searchable()->sortable(),
-            TextColumn::make('phone')->searchable()->sortable(),
-            TextColumn::make('starts_at')->searchable()->sortable(),
-            TextColumn::make('ends_at')->searchable()->sortable(),
-            TextColumn::make('quoted_total_minor')->label('Quoted total')->money('PHP', divideBy: 100)->sortable(),
-            TextColumn::make('status')->formatStateUsing(fn (string $state): string => $statuses[$state] ?? $state)->searchable()->sortable(),
-            TextColumn::make('hold_expires_at')->searchable()->sortable(),
-            TextColumn::make('session_ends_at')->label('Session')
-                ->state(fn (Reservation $record): ?string => static::sessionLabel($record))
-                ->description(fn (Reservation $record): ?string => static::deadlineLabel($record)),
-        ])->filters([SelectFilter::make('status')->options($statuses)])->recordActions([
-            Action::make('confirmed')->label('Approve')->requiresConfirmation()->visible(fn ($record) => $record->status === 'pending')->action(fn ($record) => app(ReservationService::class)->transition($record, 'confirmed', auth()->user())),
-            Action::make('rejected')->label('Reject')->requiresConfirmation()->visible(fn ($record) => $record->status === 'pending')->action(fn ($record) => app(ReservationService::class)->transition($record, 'rejected', auth()->user())),
-            Action::make('cancelled')->label('Cancel')->requiresConfirmation()->visible(fn ($record) => in_array($record->status, ['pending', 'confirmed']))->action(fn ($record) => app(ReservationService::class)->transition($record, 'cancelled', auth()->user())),
-            ActionGroup::make([static::checkInAction(), static::lateCallAction(), static::noShowAction()])
-                ->label('Arrival')->icon('heroicon-o-clock')->link(),
-        ])->defaultSort('id', 'desc');
+        return $table
+            ->poll('15s')
+            ->stackedOnMobile()
+            ->searchPlaceholder('Guest, table, or reference')
+            ->columns([
+                TextColumn::make('customer_name')->label('Guest')
+                    ->weight(FontWeight::SemiBold)
+                    ->description(fn (Reservation $record): string => $record->phone)
+                    ->searchable(['customer_name', 'phone', 'reference', 'starts_at', 'ends_at', 'hold_expires_at'])
+                    ->sortable()->wrap(),
+                TextColumn::make('billiardTable.name')->label('Table & schedule')->wrapHeader()
+                    ->weight(FontWeight::Medium)
+                    ->description(fn (Reservation $record): string => static::scheduleLabel($record))
+                    ->searchable()
+                    ->sortable(query: fn (Builder $query, string $direction): Builder => $query->orderBy('starts_at', $direction))
+                    ->wrap(),
+                TextColumn::make('status')
+                    ->badge()
+                    ->formatStateUsing(fn (string $state): string => $statuses[$state] ?? $state)
+                    ->color(fn (string $state): string => match ($state) {
+                        'confirmed' => 'success',
+                        'pending' => 'warning',
+                        'rejected', 'no_show' => 'danger',
+                        default => 'gray',
+                    })
+                    ->description(fn (Reservation $record): ?string => static::statusDescription($record))
+                    ->searchable()->sortable(),
+                TextColumn::make('quoted_total_minor')->label('Quoted total')->wrapHeader()
+                    ->money('PHP', divideBy: 100)->alignEnd()->sortable(),
+            ])
+            ->filters([SelectFilter::make('status')->options($statuses)])
+            ->recordActions([
+                ActionGroup::make([static::checkInAction(), static::lateCallAction(), static::noShowAction()])
+                    ->label('Arrival')->icon('heroicon-o-clock')->button()->outlined()->size('sm'),
+                ActionGroup::make([
+                    static::detailsAction(),
+                    Action::make('confirmed')->label('Approve')->icon('heroicon-o-check')->requiresConfirmation()
+                        ->visible(fn (Reservation $record): bool => $record->status === 'pending')
+                        ->action(fn (Reservation $record) => app(ReservationService::class)->transition($record, 'confirmed', auth()->user())),
+                    Action::make('rejected')->label('Reject')->icon('heroicon-o-x-mark')->color('danger')->requiresConfirmation()
+                        ->visible(fn (Reservation $record): bool => $record->status === 'pending')
+                        ->action(fn (Reservation $record) => app(ReservationService::class)->transition($record, 'rejected', auth()->user())),
+                    Action::make('cancelled')->label('Cancel reservation')->icon('heroicon-o-x-circle')->color('danger')->requiresConfirmation()
+                        ->visible(fn (Reservation $record): bool => in_array($record->status, ['pending', 'confirmed'], true))
+                        ->action(fn (Reservation $record) => app(ReservationService::class)->transition($record, 'cancelled', auth()->user())),
+                ])->label('More actions')->icon('heroicon-o-ellipsis-horizontal')->iconButton()->tooltip('More actions'),
+            ])->recordActionsColumnLabel('Actions')
+            ->defaultSort('id', 'desc');
+    }
+
+    private static function scheduleLabel(Reservation $record): string
+    {
+        $start = $record->starts_at->format('M j, Y · g:i A');
+        $end = $record->ends_at->format($record->starts_at->isSameDay($record->ends_at) ? 'g:i A' : 'M j, Y · g:i A');
+
+        return $start.' – '.$end;
+    }
+
+    private static function statusDescription(Reservation $record): ?string
+    {
+        if ($record->status === 'pending' && $record->hold_expires_at !== null) {
+            return 'Held until '.$record->hold_expires_at->format('M j, g:i A');
+        }
+
+        $details = array_filter([static::sessionLabel($record), static::deadlineLabel($record)]);
+
+        return $details === [] ? null : implode(' · ', $details);
+    }
+
+    private static function detailsAction(): Action
+    {
+        return Action::make('details')->label('View details')->icon('heroicon-o-document-text')
+            ->modalHeading('Reservation details')->slideOver()->modalSubmitAction(false)->modalCancelActionLabel('Close')
+            ->schema([
+                TextEntry::make('customer_name')->label('Guest'),
+                TextEntry::make('phone'),
+                TextEntry::make('billiardTable.name')->label('Billiard table'),
+                TextEntry::make('quoted_total_minor')->label('Quoted total')->money('PHP', divideBy: 100),
+                TextEntry::make('starts_at')->label('Scheduled start')->dateTime('M j, Y · g:i A'),
+                TextEntry::make('ends_at')->label('Scheduled end')->dateTime('M j, Y · g:i A'),
+                TextEntry::make('hold_expires_at')->label('Hold expires at')->dateTime('M j, Y · g:i A')
+                    ->visible(fn (Reservation $record): bool => $record->hold_expires_at !== null),
+                TextEntry::make('reference')->label('Booking reference')->copyable()->columnSpanFull(),
+            ]);
     }
 
     private static function sessionLabel(Reservation $record): ?string
