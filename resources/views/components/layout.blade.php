@@ -35,9 +35,6 @@
     </nav>
 </header>
 @if($informationUnavailable)<div class="service-notice container" role="status">Live venue information is temporarily unavailable. You can still explore the site.</div>@endif
-@if(app()->isLocal() && basename(config('database.connections.sqlite.database')) === 'cuelab-demo.sqlite')
-    <p class="service-notice container">Local demo · Booking schedules, prices, and customer records are sample data.</p>
-@endif
 <main id="main">{{ $slot }}</main>
 <footer class="site-footer">
     <div class="container footer-top"><div><a class="brand" href="{{ route('home') }}"><span class="brand-ball">8</span> CueLab.</a><p>A place for the game. A reason to get together.</p></div><a class="text-link" href="{{ route('contact') }}">Get in touch <span aria-hidden="true">↗</span></a></div>
