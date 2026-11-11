@@ -1,0 +1,11 @@
+{
+  "version": "0.0.1",
+  "configurations": [
+    {
+      "name": "cuelab",
+      "runtimeExecutable": "C:\\Users\\bcpuser\\AppData\\Local\\Microsoft\\WinGet\\Packages\\PHP.PHP.NTS.8.5_Microsoft.Winget.Source_8wekyb3d8bbwe\\php.exe",
+      "runtimeArgs": ["artisan", "serve", "--port=8000"],
+      "port": 8000
+    }
+  ]
+}

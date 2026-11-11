@@ -9,8 +9,12 @@ export default defineConfig({
             input: ['resources/css/app.css', 'resources/js/app.js', 'resources/css/filament/admin/theme.css'],
             refresh: true,
             fonts: [
-                bunny('Instrument Sans', {
+                bunny('Geist', {
                     weights: [400, 500, 600],
+                    optimizedFallbacks: false,
+                }),
+                bunny('Geist Mono', {
+                    weights: [400, 500],
                     optimizedFallbacks: false,
                 }),
             ],
