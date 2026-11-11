@@ -11,7 +11,7 @@ class RunCueLabDemo extends Command
 {
     protected $signature = 'cuelab:demo
                             {--serve : Start the demo site after seeding}
-                            {--port=8001 : Local port for the demo site}';
+                            {--port=8000 : Local port for the demo site}';
 
     protected $description = 'Create or refresh CueLab’s separate SQLite demo database';
 
