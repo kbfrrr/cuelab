@@ -46,6 +46,8 @@ class CueLabDemoSeeder extends Seeder
             if ($isHostedDemo) {
                 DB::select('select pg_advisory_xact_lock(8274, 2)');
                 if (BusinessSetting::where('key', 'hosted_demo_seeded')->exists()) {
+                    $this->cleanHostedLabels();
+
                     return [];
                 }
                 if (User::exists() || Reservation::exists() || BilliardTable::exists()) {
@@ -60,6 +62,7 @@ class CueLabDemoSeeder extends Seeder
             $this->seedMessages($now, $staff);
 
             if ($isHostedDemo) {
+                $this->cleanHostedLabels();
                 BusinessSetting::create(['key' => 'hosted_demo_seeded', 'value' => true, 'is_verified' => false]);
             }
 
@@ -74,6 +77,34 @@ class CueLabDemoSeeder extends Seeder
         $this->command?->line('Non-staff sign-in: demo.guest@example.test / '.self::PASSWORD);
         foreach ($references as $label => $reference) {
             $this->command?->line("{$label}: {$reference}");
+        }
+    }
+
+    private function cleanHostedLabels(): void
+    {
+        BilliardTable::where('name', 'like', 'Demo Table %')
+            ->whereNotExists(fn ($query) => $query->from('billiard_tables as existing')
+                ->whereRaw('existing.name = substr(billiard_tables.name, 6)'))
+            ->update(['name' => DB::raw('substr(name, 6)')]);
+        BilliardTable::where('description', 'Demo billiard table.')->update(['description' => 'Billiard table.']);
+        Tournament::where('title', 'like', 'Demo: %')
+            ->update(['title' => DB::raw('substr(title, 7)')]);
+        AvailabilityBlock::where('reason', 'like', 'Demo: %')
+            ->update(['reason' => DB::raw('substr(reason, 7)')]);
+        ContactMessage::where('subject', 'like', 'Demo: %')
+            ->update(['subject' => DB::raw('substr(subject, 7)')]);
+        User::whereIn('email', [self::STAFF_EMAIL, 'demo.manager@example.test', 'demo.events@example.test', 'demo.guest@example.test'])
+            ->where('name', 'like', '% (Demo)')
+            ->update(['name' => DB::raw('left(name, length(name) - 7)')]);
+        if (! ServiceRate::where('name', 'Archived rate')->exists()) {
+            ServiceRate::where('name', 'Demo retired rate')->update([
+                'name' => 'Archived rate',
+                'description' => 'Archived table rental rate.',
+            ]);
+        }
+        $rules = BusinessSetting::where('key', 'house_rules')->first();
+        if ($rules?->value === 'Demo house rules: keep drinks off the tables and follow staff instructions.') {
+            $rules->update(['value' => 'Keep drinks off the tables and follow staff instructions.']);
         }
     }
 
