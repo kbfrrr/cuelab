@@ -11,10 +11,11 @@
     @vite(['resources/css/app.css','resources/js/app.js'])
 </head>
 <body class="cue-public-shell" x-data="siteShell" @keydown.escape.window="menuOpen = false">
+<x-cuelab-wordmark-filter />
 <a class="skip-link" href="#main">Skip to content</a>
 <header class="site-header">
     <div class="container header-inner">
-        <a class="brand" href="{{ route('home') }}" aria-label="CueLab home"><span class="cue-wordmark"><img src="{{ asset('cuelab-logo.jpg') }}" width="960" height="960" alt="The Cue Lab Billiards"></span></a>
+        <a class="brand" href="{{ route('home') }}" aria-label="CueLab home"><x-cuelab-wordmark /></a>
         <nav class="desktop-nav" aria-label="Main navigation">
             @foreach (['home'=>'Home','about'=>'About','rates'=>'Rates & services','tournaments'=>'Tournaments','contact'=>'Contact'] as $name=>$label)
                 <a href="{{ route($name) }}" @if(request()->routeIs($name)) aria-current="page" @endif>{{ $label }}</a>

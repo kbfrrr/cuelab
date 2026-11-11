@@ -28,7 +28,10 @@
 .fi-sidebar, .fi-sidebar-header, .fi-topbar { background:var(--cl-surface); }
 .fi-sidebar { border-inline-end:1px solid var(--cl-line); }
 .fi-topbar { box-shadow:none; border-bottom:1px solid var(--cl-line); }
-.fi-logo { font-size:1.5rem; font-weight:750; letter-spacing:-.03em; color:var(--cl-accent); }
+.fi-logo .cue-wordmark { display:block; width:7.25rem; height:100%; overflow:hidden; border-radius:6px; background:#fff; }
+.fi-logo .cue-wordmark img { display:block; width:100%; height:100%; object-fit:cover; object-position:center 46%; }
+.dark .fi-logo .cue-wordmark { background:transparent; }
+.dark .fi-logo .cue-wordmark img { filter:url(#cue-wordmark-dark); }
 .fi-sidebar-nav { padding-top:1.5rem; }
 .fi-sidebar-group-label { font-size:.7rem; font-weight:500; color:var(--cl-muted); }
 .fi-sidebar-item-btn { min-height:2.6rem; border-radius:.45rem; }

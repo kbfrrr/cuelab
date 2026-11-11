@@ -11,6 +11,8 @@ use Filament\Pages\Dashboard;
 use Filament\Panel;
 use Filament\PanelProvider;
 use Filament\Support\Colors\Color;
+use Filament\View\PanelsRenderHook;
+use Illuminate\Contracts\View\View;
 use Illuminate\Cookie\Middleware\AddQueuedCookiesToResponse;
 use Illuminate\Cookie\Middleware\EncryptCookies;
 use Illuminate\Foundation\Http\Middleware\PreventRequestForgery;
@@ -26,6 +28,9 @@ class AdminPanelProvider extends PanelProvider
             ->default()
             ->databaseTransactions()
             ->brandName('CueLab')
+            ->brandLogo(fn (): View => view('components.cuelab-wordmark'))
+            ->brandLogoHeight('3.5rem')
+            ->renderHook(PanelsRenderHook::BODY_START, fn (): View => view('components.cuelab-wordmark-filter'))
             ->defaultThemeMode(ThemeMode::Light)
             ->sidebarCollapsibleOnDesktop()
             ->sidebarWidth('15rem')
