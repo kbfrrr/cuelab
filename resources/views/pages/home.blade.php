@@ -14,7 +14,7 @@
     $visitLabel = $bookingReady ? 'Request a table' : 'Plan a visit';
 @endphp
 
-<x-layout :information-unavailable="$informationUnavailable" title="Billiards in Angeles" :landing="true" :visit-url="$visitUrl" :visit-label="$visitLabel">
+<x-layout :information-unavailable="$informationUnavailable" title="Billiards in Angeles" :visit-url="$visitUrl" :visit-label="$visitLabel">
     <section class="container cue-home-hero" aria-labelledby="cue-home-title">
         <div class="cue-intro">
             <p class="cue-kicker"><span></span> CueLab Billiards <span class="cue-kicker-divider"></span> Angeles, Pampanga</p>

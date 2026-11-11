@@ -1,19 +1,19 @@
-@props(['title' => 'Welcome', 'informationUnavailable' => false, 'landing' => false, 'visitUrl' => null, 'visitLabel' => 'Plan a visit'])
+@props(['title' => 'Welcome', 'informationUnavailable' => false, 'visitUrl' => null, 'visitLabel' => 'Plan a visit'])
 <!DOCTYPE html>
 <html lang="en" data-theme="light">
 <head>
     <meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1">
     <title>{{ $title }} · CueLab</title>
     <meta name="description" content="Discover CueLab. Explore billiards, venue information, and upcoming booking and tournament services.">
-    <meta name="theme-color" content="{{ $landing ? '#fbf7f3' : '#153d30' }}">
+    <meta name="theme-color" content="#fbf7f3">
     <script>try { document.documentElement.dataset.theme = localStorage.getItem('cuelab-theme') || (matchMedia('(prefers-color-scheme: dark)').matches ? 'dark' : 'light'); } catch(e) {}</script>
     @vite(['resources/css/app.css','resources/js/app.js'])
 </head>
-<body @class(['cue-landing-shell' => $landing]) x-data="siteShell" @keydown.escape.window="menuOpen = false; chatOpen = false">
+<body class="cue-public-shell" x-data="siteShell" @keydown.escape.window="menuOpen = false; chatOpen = false">
 <a class="skip-link" href="#main">Skip to content</a>
 <header class="site-header">
     <div class="container header-inner">
-        <a class="brand" href="{{ route('home') }}" aria-label="CueLab home">@if($landing)<span class="cue-wordmark"><img src="{{ asset('cuelab-logo.jpg') }}" width="960" height="960" alt="The Cue Lab Billiards"></span>@else<span class="brand-ball">8</span> CueLab<span class="brand-dot">.</span>@endif</a>
+        <a class="brand" href="{{ route('home') }}" aria-label="CueLab home"><span class="cue-wordmark"><img src="{{ asset('cuelab-logo.jpg') }}" width="960" height="960" alt="The Cue Lab Billiards"></span></a>
         <nav class="desktop-nav" aria-label="Main navigation">
             @foreach (['home'=>'Home','about'=>'About','rates'=>'Rates & services','tournaments'=>'Tournaments','contact'=>'Contact'] as $name=>$label)
                 <a href="{{ route($name) }}" @if(request()->routeIs($name)) aria-current="page" @endif>{{ $label }}</a>
@@ -35,7 +35,7 @@
 <main id="main">{{ $slot }}</main>
 <footer class="site-footer">
     <div class="container footer-top"><div><a class="brand" href="{{ route('home') }}"><span class="brand-ball">8</span> CueLab.</a><p>A place for the game. A reason to get together.</p></div><a class="text-link" href="{{ route('contact') }}">Get in touch <span aria-hidden="true">↗</span></a></div>
-    <div class="container footer-bottom"><span>© {{ date('Y') }} CueLab</span><span>{{ $landing ? 'CueLab Billiards · Angeles, Pampanga' : 'Venue details pending verification' }}</span><a href="{{ route('privacy') }}">Privacy notice</a></div>
+    <div class="container footer-bottom"><span>© {{ date('Y') }} CueLab</span><span>CueLab Billiards · Angeles, Pampanga</span><a href="{{ route('privacy') }}">Privacy notice</a></div>
 </footer>
 <aside class="chat-panel" x-show="chatOpen" x-cloak @click.outside="chatOpen = false" role="region" aria-labelledby="chat-title">
     <div class="chat-heading"><div><span class="eyebrow">AI assistant</span><h2 id="chat-title">CueLab assistant</h2></div><button class="icon-button" @click="chatOpen = false; $refs.chatToggle.focus()" aria-label="Close AI assistant">×</button></div>
