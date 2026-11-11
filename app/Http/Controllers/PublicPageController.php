@@ -21,7 +21,7 @@ class PublicPageController extends Controller
         $informationUnavailable = false;
         $bookingReady = false;
         try {
-            $tournaments = Tournament::whereIn('status', ['published', 'closed'])->where('ends_at', '>', now())->orderBy('starts_at')->get();
+            $tournaments = Tournament::publicSchedule()->get();
             $bookingReady = app(ReservationService::class)->enabled();
             $settings = BusinessSetting::where('is_verified', true)->get()->mapWithKeys(fn (BusinessSetting $setting): array => [$setting->key => $setting->value])->all();
             $rates = ServiceRate::where('is_verified', true)->where('is_active', true)->orderBy('name')->get();

@@ -8,6 +8,7 @@ use App\Models\BusinessSetting;
 use App\Models\OperatingHour;
 use App\Models\Reservation;
 use App\Models\ServiceRate;
+use App\Models\Tournament;
 use App\Models\User;
 use App\Services\ReservationService;
 use Illuminate\Foundation\Testing\RefreshDatabase;
@@ -88,6 +89,22 @@ class CueChatTest extends TestCase
             ->assertJsonPath('reply', 'How long would you like to play?');
         $this->postJson('/cuechat/message', ['message' => 'One hour, any table'])->assertOk()
             ->assertJsonPath('actions.0.label', 'Review booking request');
+    }
+
+    public function test_chat_lists_upcoming_public_tournaments_without_calling_dify(): void
+    {
+        Http::fake();
+        Tournament::factory()->create(['title' => 'Draft Tournament', 'status' => 'draft']);
+        Tournament::factory()->create(['title' => 'Upcoming 8-ball', 'status' => 'published', 'starts_at' => now()->addDays(2), 'ends_at' => now()->addDays(2)->addHours(4)]);
+
+        foreach (['Do you have upcoming tournaments', 'May tournament po ba?'] as $message) {
+            $response = $this->postJson('/cuechat/message', ['message' => $message])
+                ->assertOk()->assertJsonPath('actions.0.url', route('tournaments'));
+            $this->assertStringContainsString('Upcoming 8-ball', $response->json('reply'));
+            $this->assertStringNotContainsString('Draft Tournament', $response->json('reply'));
+        }
+
+        Http::assertNothingSent();
     }
 
     public function test_chat_reads_current_rates_and_uses_the_faq_for_venue_questions(): void

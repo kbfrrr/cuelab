@@ -4,6 +4,7 @@ namespace App\Http\Controllers;
 
 use App\Models\OperatingHour;
 use App\Models\ServiceRate;
+use App\Models\Tournament;
 use App\Services\BookingConversation;
 use App\Services\CueChatDify;
 use Illuminate\Database\QueryException;
@@ -41,7 +42,7 @@ class CueChatController extends Controller
             return $this->status();
         }
         if ($message === 'Ask about CueLab') {
-            return $this->reply('Ask me about rates, hours, or visiting CueLab.');
+            return $this->reply('Ask me about rates, hours, upcoming tournaments, or visiting CueLab.');
         }
         $withoutDates = preg_replace('/\b(?:\d{4}-\d{1,2}-\d{1,2}|\d{1,2}\/\d{1,2}\/\d{2,4})\b/u', '', $message);
         if (preg_match('/@|\b[a-z0-9]{32}\b|(?<!\d)(?:\d[\s().+-]*){7,}/iu', $withoutDates)) {
@@ -50,6 +51,9 @@ class CueChatController extends Controller
         if (preg_match('/\b(?:holds?|grace period|late arrival|15\s*(?:mins?|minutes?)\b)\b/iu', $message) &&
             preg_match('/\b(?:holds?|grace period|late arrival|late|policy|reserve|reservation)\b/iu', $message)) {
             return $this->referral('Please ask CueLab staff about its table-hold policy.');
+        }
+        if (preg_match('/^(?:(?:do you have|are there|show me|list) (?:any |the )?(?:upcoming )?|(?:what are the )?(?:upcoming|next) |when is (?:the )?next |may (?:upcoming )?|kailan (?:ang )?(?:next )?)(?:billiards? )?tournaments?(?: po)?(?: ba)?[?!.]*$/iu', Str::squish($message))) {
+            return $this->tournaments();
         }
 
         $user = $session->get('cuechat.user') ?? (string) Str::uuid();
@@ -87,6 +91,22 @@ class CueChatController extends Controller
         }
 
         return $this->reply($rates->map(fn (ServiceRate $rate): string => $rate->name.' · PHP '.number_format($rate->amount_minor / 100, 2).' per hour')->implode("\n"));
+    }
+
+    private function tournaments(): array
+    {
+        $events = Tournament::publicSchedule()->where('starts_at', '>', now())->limit(3)->get();
+        if ($events->isEmpty()) {
+            return $this->reply('CueLab has no upcoming tournaments listed right now.', 'View tournaments', route('tournaments'));
+        }
+
+        $schedule = $events->map(fn (Tournament $event): string => $event->title.' · '.$event->starts_at->format('M j, Y g:i A'));
+
+        return $this->reply(
+            "Upcoming tournaments (Philippine time)\n".$schedule->implode("\n"),
+            'View tournaments and registration details',
+            route('tournaments'),
+        );
     }
 
     private function hours(): array
