@@ -12,6 +12,12 @@
     $scheduleLabel = $firstDay === null ? 'Every day' : ($openDays->count() === 1 ? $dayNames[$firstDay] : $dayNames[$firstDay].'–'.$dayNames[($firstDay + $openDays->count() - 1) % 7]);
     $visitUrl = $bookingReady ? route('booking') : '#visit';
     $visitLabel = $bookingReady ? 'Request a table' : 'Plan a visit';
+    $heroSlides = [
+        ['file' => 'cuelab-hall.webp', 'width' => 720, 'height' => 960, 'position' => 'center 62%', 'alt' => 'The CueLab hall with blue-felt billiard tables under square LED ceiling lights.'],
+        ['file' => 'cuelab-tables.webp', 'width' => 1440, 'height' => 1920, 'position' => 'center 55%', 'alt' => 'Guests playing at a row of Star Billiards tables with blue felt.'],
+        ['file' => 'cuelab-trophies.webp', 'width' => 1320, 'height' => 1320, 'position' => 'center 60%', 'alt' => 'Champion and first runner-up trophies from a CueLab 10-ball tournament on a blue table.'],
+        ['file' => 'cuelab-open.webp', 'width' => 1500, 'height' => 2000, 'position' => 'center', 'fit' => 'contain', 'alt' => 'A “We’re open, 4 PM to 2 AM” poster over a Maxima 8 Diamond table branded The Cue Lab Billiards.'],
+    ];
 @endphp
 
 <x-layout :information-unavailable="$informationUnavailable" title="Billiards in Angeles" :visit-url="$visitUrl" :visit-label="$visitLabel">
@@ -28,9 +34,32 @@
                 <p class="cue-booking-note">Choose a time and send a request for staff approval.</p>
             @endif
         </div>
-        <figure class="cue-break-art">
-            <img src="{{ asset('cuelab-break.svg') }}" width="800" height="600" fetchpriority="high" alt="Illustration of a red felt billiards table with a cue and numbered balls.">
-            <figcaption><span>Chalk. Aim. Dominate.</span><span>THE CUE LAB</span></figcaption>
+        <figure class="cue-break-art cue-carousel" x-data="heroCarousel({{ count($heroSlides) }})" aria-roledescription="carousel" aria-label="Photos of The Cue Lab Billiards"
+            @mouseenter="pause()" @mouseleave="resume()" @focusin="pause()" @focusout="resume()"
+            @touchstart.passive="touchStart($event)" @touchend="touchEnd($event)" @keydown.left="prev()" @keydown.right="next()">
+            <div class="cue-slides" aria-live="off" :aria-live="paused ? 'polite' : 'off'">
+                @foreach ($heroSlides as $index => $slide)
+                    <img @class(['cue-slide', 'is-active' => $index === 0]) :class="{ 'is-active': current === {{ $index }} }"
+                        src="{{ asset('images/'.$slide['file']) }}" width="{{ $slide['width'] }}" height="{{ $slide['height'] }}"
+                        style="object-position: {{ $slide['position'] }}; object-fit: {{ $slide['fit'] ?? 'cover' }}" alt="{{ $slide['alt'] }}"
+                        aria-roledescription="slide" aria-label="{{ $index + 1 }} of {{ count($heroSlides) }}"
+                        @if ($index === 0) fetchpriority="high" @else loading="lazy" aria-hidden="true" @endif
+                        :aria-hidden="current !== {{ $index }}">
+                @endforeach
+            </div>
+            <figcaption>
+                <span>Chalk. Aim. Dominate.</span>
+                <span class="cue-carousel-controls">
+                    <button type="button" class="cue-carousel-arrow" @click="prev()" aria-label="Previous photo"><x-heroicon-o-chevron-left aria-hidden="true" /></button>
+                    <span class="cue-carousel-dots">
+                        @foreach ($heroSlides as $index => $slide)
+                            <button type="button" @class(['cue-carousel-dot', 'is-active' => $index === 0]) :class="{ 'is-active': current === {{ $index }} }"
+                                @click="go({{ $index }})" aria-label="Show photo {{ $index + 1 }}" :aria-current="current === {{ $index }}"></button>
+                        @endforeach
+                    </span>
+                    <button type="button" class="cue-carousel-arrow" @click="next()" aria-label="Next photo"><x-heroicon-o-chevron-right aria-hidden="true" /></button>
+                </span>
+            </figcaption>
         </figure>
     </section>
 
