@@ -1,0 +1,18 @@
+services:
+  - type: web
+    name: cuelab
+    runtime: docker
+    plan: free
+    region: singapore
+    healthCheckPath: /up
+    envVars:
+      - key: APP_KEY
+        sync: false
+      - key: DB_URL
+        sync: false
+      - key: DIFY_INTAKE_API_KEY
+        sync: false
+      - key: DIFY_FAQ_API_KEY
+        sync: false
+      - key: CUELAB_HOSTED_DEMO_PASSWORD
+        sync: false

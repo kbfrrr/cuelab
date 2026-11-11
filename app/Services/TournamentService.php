@@ -30,7 +30,7 @@ class TournamentService
                     $this->fail('Submission already used. Start again.');
                 }
 
-return $existing;
+                return $existing;
             }
             if ($event->status !== 'published' || $event->starts_at <= now() || ! $event->registration_deadline || $event->registration_deadline <= now()) {
                 $this->fail('Registration is closed.');
@@ -55,6 +55,7 @@ return $existing;
         $data = Validator::make($data, ['title' => 'required|string|max:150', 'description' => 'nullable|string|max:5000', 'rules' => 'required|string|max:5000', 'starts_at' => 'required|date', 'ends_at' => 'required|date|after:starts_at', 'registration_deadline' => 'required|date|before_or_equal:starts_at', 'capacity' => 'required|integer|min:1|max:1000', 'entry_fee_minor' => 'required|integer|min:0|max:10000000', 'status' => 'required|in:draft,published,closed,cancelled'])->validate();
 
         return DB::transaction(function () use ($data, $staff, $event) {
+            app(ReservationService::class)->lockScheduleForWrite();
             $event = $event ? Tournament::findOrFail($event->id) : new Tournament;
             if ($event->exists && $event->registrations()->where('status', '!=', 'cancelled')->count() > $data['capacity']) {
                 $this->fail('Capacity cannot be smaller than existing registrations.');

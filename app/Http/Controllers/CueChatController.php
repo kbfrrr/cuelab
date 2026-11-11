@@ -4,6 +4,7 @@ namespace App\Http\Controllers;
 
 use App\Models\OperatingHour;
 use App\Models\ServiceRate;
+use App\Models\Tournament;
 use App\Services\BookingConversation;
 use App\Services\CueChatDify;
 use App\Services\ReservationService;
@@ -75,7 +76,7 @@ class CueChatController extends Controller
             return $this->status($request);
         }
         if ($message === 'Ask about CueLab') {
-            return $this->reply('Ask me about rates, hours, or house rules.');
+            return $this->reply('Ask me about rates, hours, upcoming tournaments, or house rules.');
         }
         if (preg_match('/\b(?:holds?|grace period|late arrival|15\s*(?:mins?|minutes?)\b)\b/iu', $message) &&
             preg_match('/\b(?:holds?|grace period|late arrival|late|policy|reserve|reservation)\b/iu', $message)) {
@@ -87,6 +88,9 @@ class CueChatController extends Controller
             return $venuePolicy;
         }
         $question = Str::lower(Str::squish(rtrim($message, '?! .')));
+        if (preg_match('/^(?:(?:do you have|are there|show me|list) (?:any |the )?(?:upcoming )?|(?:what are the )?(?:upcoming|next) |when is (?:the )?next |may (?:upcoming )?|kailan (?:ang )?(?:next )?)(?:billiards? )?tournaments?(?: po)?(?: ba)?$/u', $question)) {
+            return $this->tournaments();
+        }
         if (($approvedAnswer = $this->approvedQuickAnswer($question)) !== null) {
             return $this->reply($approvedAnswer);
         }
@@ -181,6 +185,18 @@ class CueChatController extends Controller
         }
 
         return $this->reply($rates->map(fn (ServiceRate $rate): string => $rate->name.' · PHP '.number_format($rate->amount_minor / 100, 2).' per hour')->implode("\n"));
+    }
+
+    private function tournaments(): array
+    {
+        $events = Tournament::publicSchedule()->where('starts_at', '>', now())->limit(3)->get();
+        if ($events->isEmpty()) {
+            return $this->reply('CueLab has no upcoming tournaments listed right now.', 'View tournaments', route('tournaments'));
+        }
+
+        $schedule = $events->map(fn (Tournament $event): string => $event->title.' · '.$event->starts_at->format('M j, Y g:i A'));
+
+        return $this->reply("Upcoming tournaments (Philippine time)\n".$schedule->implode("\n"), 'View tournaments and registration details', route('tournaments'));
     }
 
     private function hours(): array

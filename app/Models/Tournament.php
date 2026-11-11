@@ -3,6 +3,7 @@
 namespace App\Models;
 
 use Database\Factories\TournamentFactory;
+use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\HasMany;
@@ -17,6 +18,13 @@ class Tournament extends Model
     protected function casts(): array
     {
         return ['starts_at' => 'immutable_datetime', 'ends_at' => 'immutable_datetime', 'registration_deadline' => 'immutable_datetime', 'capacity' => 'integer', 'entry_fee_minor' => 'integer'];
+    }
+
+    public function scopePublicSchedule(Builder $query): Builder
+    {
+        return $query->whereIn('status', ['published', 'closed'])
+            ->where('ends_at', '>', now())
+            ->orderBy('starts_at');
     }
 
     public function registrations(): HasMany

@@ -32,22 +32,43 @@ class CueLabDemoSeeder extends Seeder
         $database = DB::connection()->getDatabaseName();
         $isDemoFile = basename($database) === self::DATABASE_FILE;
         $isTestDatabase = app()->environment('testing') && $database === ':memory:';
+        $hostedPassword = config('cuelab.hosted_demo_password');
+        $isHostedDemo = app()->environment('production') && DB::getDriverName() === 'pgsql'
+            && is_string($hostedPassword) && strlen($hostedPassword) >= 24
+            && $hostedPassword !== self::PASSWORD;
 
-        if (! app()->environment('local', 'testing') || DB::getDriverName() !== 'sqlite' || ! ($isDemoFile || $isTestDatabase)) {
+        if (! $isHostedDemo && (! app()->environment('local', 'testing') || DB::getDriverName() !== 'sqlite' || ! ($isDemoFile || $isTestDatabase))) {
             throw new RuntimeException('Use a local SQLite database named '.self::DATABASE_FILE.' for demo data.');
         }
 
         $now = CarbonImmutable::now();
-        $references = DB::transaction(function () use ($now): array {
-            $staff = $this->seedAccounts();
+        $references = DB::transaction(function () use ($now, $isHostedDemo, $hostedPassword): array {
+            if ($isHostedDemo) {
+                DB::select('select pg_advisory_xact_lock(8274, 2)');
+                if (BusinessSetting::where('key', 'hosted_demo_seeded')->exists()) {
+                    return [];
+                }
+                if (User::exists() || Reservation::exists() || BilliardTable::exists()) {
+                    throw new RuntimeException('Hosted demo data requires a fresh database.');
+                }
+            }
+            $staff = $this->seedAccounts($isHostedDemo ? $hostedPassword : self::PASSWORD);
             $tables = $this->seedVenue();
             $bookings = $this->seedBookings($now, $staff, $tables);
             $tournaments = $this->seedTournaments($now, $staff);
             $this->seedBlocks($now, $staff, $tables);
             $this->seedMessages($now, $staff);
 
+            if ($isHostedDemo) {
+                BusinessSetting::create(['key' => 'hosted_demo_seeded', 'value' => true, 'is_verified' => false]);
+            }
+
             return [...$bookings, ...$tournaments];
         });
+
+        if ($isHostedDemo) {
+            return;
+        }
 
         $this->command?->info('Staff sign-in: '.self::STAFF_EMAIL.' / '.self::PASSWORD);
         $this->command?->line('Non-staff sign-in: demo.guest@example.test / '.self::PASSWORD);
@@ -56,7 +77,7 @@ class CueLabDemoSeeder extends Seeder
         }
     }
 
-    private function seedAccounts(): User
+    private function seedAccounts(string $accountPassword): User
     {
         $accounts = [
             [self::STAFF_EMAIL, 'Nina Reyes (Demo)', true],
@@ -67,7 +88,7 @@ class CueLabDemoSeeder extends Seeder
 
         foreach ($accounts as [$email, $name, $isStaff]) {
             $user = User::firstOrNew(['email' => $email]);
-            $user->forceFill(['name' => $name, 'password' => self::PASSWORD, 'is_staff' => $isStaff, 'email_verified_at' => now()])->save();
+            $user->forceFill(['name' => $name, 'password' => $accountPassword, 'is_staff' => $isStaff, 'email_verified_at' => now()])->save();
         }
 
         return User::where('email', self::STAFF_EMAIL)->firstOrFail();

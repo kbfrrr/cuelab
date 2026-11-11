@@ -18,6 +18,13 @@ use Illuminate\Validation\ValidationException;
 
 class ReservationService
 {
+    public function lockScheduleForWrite(): void
+    {
+        if (DB::getDriverName() === 'pgsql') {
+            DB::select('select pg_advisory_xact_lock(8274, 1)');
+        }
+    }
+
     public function findForStatus(?string $reference): ?Reservation
     {
         if ($reference === null || $reference === '') {
@@ -119,6 +126,7 @@ class ReservationService
         Validator::make($data, ['billiard_table_id' => 'required|integer', 'starts_at' => 'required|date', 'minutes' => 'required|integer|min:15|max:480|multiple_of:15', 'customer_name' => 'required|string|max:150', 'phone' => ['required', 'string', 'max:32', 'regex:/^\+?[0-9 ()-]{7,32}$/'], 'submission_key' => 'required|uuid', 'hourly_rate' => 'required|integer|min:0'])->validate();
 
         return DB::transaction(function () use ($data, $staff): Reservation {
+            $this->lockScheduleForWrite();
             $existing = Reservation::where('submission_key', $data['submission_key'])->first();
             if ($existing) {
                 if ($existing->billiard_table_id != $data['billiard_table_id'] || $existing->customer_name !== $data['customer_name'] || $existing->phone !== $data['phone'] || ! $existing->starts_at->equalTo(CarbonImmutable::parse($data['starts_at'])) || (int) $existing->starts_at->diffInMinutes($existing->ends_at) !== (int) $data['minutes']) {
@@ -150,6 +158,7 @@ class ReservationService
     {
         abort_unless($staff->is_staff, 403);
         DB::transaction(function () use ($reservation, $action, $staff): void {
+            $this->lockScheduleForWrite();
             $this->expire();
             $record = Reservation::lockForUpdate()->findOrFail($reservation->id);
             if (! in_array($action, ['confirmed', 'rejected', 'cancelled']) || ! in_array($record->status, $action === 'cancelled' ? ['pending', 'confirmed'] : ['pending'])) {
@@ -215,6 +224,7 @@ class ReservationService
         abort_unless($staff->is_staff, 403);
 
         DB::transaction(function () use ($reservation, $agreedOffer): void {
+            $this->lockScheduleForWrite();
             $record = Reservation::lockForUpdate()->findOrFail($reservation->id);
             $now = CarbonImmutable::now();
             if (! $record->canCheckIn($now)) {
@@ -236,6 +246,7 @@ class ReservationService
         }
 
         DB::transaction(function () use ($reservation, $outcome, $agreedOffer): void {
+            $this->lockScheduleForWrite();
             $record = Reservation::lockForUpdate()->findOrFail($reservation->id);
             $now = CarbonImmutable::now();
             if (! $record->canRecordLateCall($now)
@@ -264,6 +275,7 @@ class ReservationService
         }
 
         DB::transaction(function () use ($reservation): void {
+            $this->lockScheduleForWrite();
             $record = Reservation::lockForUpdate()->findOrFail($reservation->id);
             if (! $record->canReleaseNoShow(CarbonImmutable::now())) {
                 $this->fail('This reservation is no longer eligible for release as a no-show.');
@@ -279,6 +291,7 @@ class ReservationService
         Validator::make($data, ['billiard_table_id' => 'nullable|exists:billiard_tables,id', 'type' => 'required|in:maintenance,closure,tournament', 'reason' => 'required|string|max:255', 'starts_at' => 'required|date', 'ends_at' => 'required|date|after:starts_at'])->validate();
 
         return DB::transaction(function () use ($data, $staff): AvailabilityBlock {
+            $this->lockScheduleForWrite();
             $this->expire();
             $from = CarbonImmutable::parse($data['starts_at']);
             $to = CarbonImmutable::parse($data['ends_at']);

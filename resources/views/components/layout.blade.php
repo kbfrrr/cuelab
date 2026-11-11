@@ -36,6 +36,7 @@
     </nav>
 </header>
 @if($informationUnavailable)<div class="service-notice container" role="status">Live venue information is temporarily unavailable. You can still explore the site.</div>@endif
+@if(config('cuelab.hosted_demo_password'))<div class="service-notice container">Demo site · Bookings use sample data and do not reserve a table at CueLab.</div>@endif
 <main id="main">{{ $slot }}</main>
 <footer class="site-footer">
     <div class="container footer-top"><div><a class="brand" href="{{ route('home') }}"><span class="brand-ball">8</span> CueLab.</a><p>A place for the game. A reason to get together.</p></div><a class="text-link" href="{{ route('contact') }}">Get in touch <span aria-hidden="true">↗</span></a></div>
