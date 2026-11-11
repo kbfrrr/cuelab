@@ -18,16 +18,37 @@ class BookingController extends Controller
     {
         $enabled = $this->reservations->enabled();
         $tables = collect();
-        if ($enabled && $request->filled('starts_at')) {
+        $startsAt = $request->query('starts_at');
+        $minutes = $request->query('minutes');
+        $selectedTable = null;
+        if ($request->has('cuechat')) {
+            $selection = $request->session()->get('cuechat.selection');
+            $token = $request->query('cuechat');
+            if (! $enabled || ! is_array($selection) || ! is_string($token)
+                || ! hash_equals($selection['token'], $token) || $selection['expires_at'] <= now()->timestamp) {
+                return redirect()->route('booking')->withErrors(['booking' => 'This CueChat selection is no longer available. Check for a table again.']);
+            }
+            $startsAt = $selection['starts_at'];
+            $minutes = $selection['minutes'];
+            $selectedTable = $selection['table_id'];
+        }
+        if ($enabled && ($startsAt !== null && $startsAt !== '')) {
             try {
-                $data = $request->validate(['starts_at' => 'required|date_format:Y-m-d\TH:i', 'minutes' => 'required|integer|min:15|max:480|multiple_of:15']);
+                $data = validator(['starts_at' => $startsAt, 'minutes' => $minutes], [
+                    'starts_at' => 'required|date_format:Y-m-d\TH:i',
+                    'minutes' => 'required|integer|min:15|max:480|multiple_of:15',
+                ])->validate();
                 $tables = $this->reservations->available($data['starts_at'], (int) $data['minutes']);
             } catch (ValidationException $exception) {
                 return redirect()->route('booking')->withErrors($exception->errors());
             }
+            if ($selectedTable !== null && ! $tables->contains('id', $selectedTable)) {
+                $selectedTable = null;
+                $request->session()->now('cuechat_slot_changed', true);
+            }
         }
 
-        return view('pages.booking', compact('enabled', 'tables'));
+        return view('pages.booking', compact('enabled', 'tables', 'startsAt', 'minutes', 'selectedTable'));
     }
 
     public function review(Request $request): View
@@ -76,6 +97,6 @@ class BookingController extends Controller
             return redirect()->route('booking');
         }
 
-        return view('pages.booking-status',compact('record'));
+        return view('pages.booking-status', compact('record'));
     }
 }

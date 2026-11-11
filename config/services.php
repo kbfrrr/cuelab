@@ -22,6 +22,12 @@ return [
         'key' => env('RESEND_API_KEY'),
     ],
 
+    'dify' => [
+        'base_url' => env('DIFY_BASE_URL', 'https://api.dify.ai/v1'),
+        'intake_key' => env('DIFY_INTAKE_API_KEY', ''),
+        'faq_key' => env('DIFY_FAQ_API_KEY', ''),
+    ],
+
     'ses' => [
         'key' => env('AWS_ACCESS_KEY_ID'),
         'secret' => env('AWS_SECRET_ACCESS_KEY'),
