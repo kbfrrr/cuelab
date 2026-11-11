@@ -11,3 +11,102 @@
 @media(prefers-reduced-motion:reduce) { html { scroll-behavior:auto; } *,*::before,*::after { transition:none!important; } }
 
 .booking-form { margin-block:25px; } .booking-form select { display:block; width:100%; border:1px solid var(--line); border-radius:5px; background:var(--bg); color:var(--ink); padding:12px; margin-top:5px; } .check-label { display:flex; align-items:center; gap:10px; flex-wrap:wrap; } .check-label input { width:18px; } .check-label a { text-decoration:underline; } .booking-heading { margin-top:40px; } .reference-code { overflow-wrap:anywhere; font-family:monospace; font-size:16px; } button:disabled { opacity:.65; }
+
+/* CueLab landing: warm paper, ink, and the red from the venue mark. */
+.cue-landing-shell {
+    --bg:#fbf7f3; --ink:#211a1b; --muted:#645356; --line:#e9ddda;
+    --green:#a92032; --lime:#f6d8d7; --white:#fffaf7;
+    --cue-paper:#fffdfb; --cue-rose:#f5e4e2; --cue-red:#a92032; --cue-focus:#a92032;
+    --cue-soft-shadow:0 2px 4px #48242b05, 0 12px 32px #4e222c0c;
+    --cue-art-shadow:0 4px 9px #30101916, 0 24px 48px #45152224;
+}
+[data-theme=dark] .cue-landing-shell {
+    --bg:#191418; --ink:#fff3ee; --muted:#d0b9bd; --line:#48343d;
+    --green:#a92032; --lime:#f2ced0; --white:#fff8f5;
+    --cue-paper:#271e24; --cue-rose:#38252d; --cue-red:#ff9da6; --cue-focus:#ff9da6;
+    --cue-soft-shadow:0 3px 6px #0002, 0 12px 30px #0002;
+    --cue-art-shadow:0 4px 9px #0003, 0 24px 45px #0004;
+}
+.cue-landing-shell :focus-visible { outline-color:var(--cue-focus); }
+.cue-landing-shell .container { width:min(1240px,calc(100% - 64px)); }
+.cue-landing-shell .site-header { background:var(--cue-paper); }
+.cue-landing-shell .header-inner { min-height:76px; gap:22px; }
+.cue-landing-shell .desktop-nav { gap:clamp(1rem,2.5vw,2rem); }
+.cue-landing-shell .desktop-nav a, .cue-landing-shell .mobile-nav a { display:flex; align-items:center; min-height:44px; }
+.cue-landing-shell nav a[aria-current] { color:var(--cue-red); }
+.cue-landing-shell .button { border-radius:10px; min-height:44px; gap:.7rem; }
+.cue-landing-shell .icon-button { width:44px; height:44px; }
+.cue-landing-shell .chat-toggle { border-color:#f3aaaf; }
+.cue-landing-shell .chat-badge, .cue-landing-shell .skip-link { color:#3a1620; }
+.cue-wordmark { display:block; width:148px; height:72px; background:#fff; border-radius:8px; overflow:hidden; }
+.cue-wordmark img { display:block; width:100%; height:100%; object-fit:cover; object-position:center 46%; }
+.cue-home-hero { display:grid; grid-template-columns:minmax(0,.94fr) minmax(0,1.06fr); align-items:center; gap:clamp(2rem,4.4vw,4.5rem); padding-block:clamp(2.25rem,5vw,4.75rem) 2.5rem; }
+.cue-intro { padding-block:1.2rem; }
+.cue-kicker { display:flex; align-items:center; flex-wrap:wrap; gap:.65rem; font-size:.75rem; font-weight:650; letter-spacing:.055em; color:var(--muted); }
+.cue-kicker > span:first-child { flex:none; width:8px; height:8px; border-radius:50%; background:var(--cue-red); }
+.cue-kicker-divider { flex:none; width:1px; height:12px; background:var(--line); }
+.cue-intro h1 { color:var(--ink); font-size:clamp(3.15rem,6.4vw,6rem); letter-spacing:-.065em; line-height:1.02; font-weight:650; margin-block:1.1rem 1.45rem; }
+.cue-intro h1 span { color:var(--cue-red); }
+.cue-intro-copy { font-size:clamp(1rem,1.6vw,1.15rem); line-height:1.65; max-width:32ch; }
+.cue-hero-actions { display:flex; flex-wrap:wrap; align-items:center; gap:.75rem 1.45rem; margin-top:1.6rem; }
+.cue-primary { min-height:49px; padding-inline:1.2rem; }
+.cue-primary svg, .cue-text-link svg { width:16px; height:16px; flex:none; }
+.cue-text-link { display:inline-flex; align-items:center; justify-content:flex-start; gap:.45rem; min-height:44px; width:fit-content; font-size:.875rem; font-weight:650; color:var(--cue-red); }
+.cue-text-link:hover { text-decoration:underline; text-underline-offset:4px; }
+.cue-booking-note { font-size:.82rem; margin-top:.9rem; }
+.cue-break-art { position:relative; background:#281118; border-radius:34px 34px 85px 34px; overflow:hidden; margin:0; box-shadow:var(--cue-art-shadow); aspect-ratio:4/3; }
+.cue-break-art img { display:block; width:100%; height:100%; object-fit:cover; }
+.cue-break-art figcaption { position:absolute; inset:auto 0 0; display:flex; align-items:baseline; justify-content:space-between; gap:1rem; padding:2.1rem 2.5rem 1.35rem 1.4rem; background:linear-gradient(transparent,#170a11d9); color:#fff2eb; font-size:.78rem; }
+.cue-break-art figcaption span:last-child { font-size:.62rem; font-weight:650; letter-spacing:.15em; }
+.cue-visit { scroll-margin-top:1rem; padding-block:.7rem 2.5rem; }
+.cue-section-head { display:flex; justify-content:space-between; align-items:baseline; flex-wrap:wrap; gap:.65rem 1.3rem; margin-bottom:1.2rem; }
+.cue-section-head h2 { color:var(--ink); font-size:clamp(1.9rem,3.4vw,2.8rem); font-weight:650; letter-spacing:-.045em; }
+.cue-section-head p { font-size:.9rem; }
+.cue-visit-grid, .cue-explore-grid { display:grid; gap:1rem; }
+.cue-visit-grid { grid-template-columns:minmax(0,.82fr) minmax(0,1.06fr) minmax(0,1.12fr); }
+.cue-explore-grid { grid-template-columns:minmax(0,1.3fr) minmax(0,1fr); }
+.cue-tile { display:flex; flex-direction:column; align-items:flex-start; min-width:0; padding:clamp(1.15rem,2.4vw,1.9rem); background:var(--cue-paper); border-radius:22px; box-shadow:var(--cue-soft-shadow); }
+.cue-tile-top { display:flex; width:100%; justify-content:space-between; align-items:center; gap:1rem; margin-bottom:1.15rem; }
+.cue-tile-top h3 { font-size:.83rem; font-weight:650; letter-spacing:0; }
+.cue-tile-top svg { width:23px; height:23px; flex:none; color:var(--cue-red); }
+.cue-tile > .cue-text-link, .cue-tile-actions { margin-top:auto; padding-top:.4rem; }
+.cue-tile p + .cue-text-link, .cue-tile address + .cue-text-link { margin-top:.6rem; }
+.cue-rate { border-radius:22px 22px 22px 42px; }
+.cue-price { font-size:clamp(2.7rem,5vw,4.1rem); font-weight:650; letter-spacing:-.055em; line-height:1.1; color:var(--cue-red); }
+.cue-tile-meta { font-size:.88rem; color:var(--muted); }
+.cue-tile-copy { color:var(--ink); font-size:clamp(1.15rem,2.2vw,1.55rem); font-weight:650; letter-spacing:-.025em; margin-bottom:.35rem; }
+.cue-hours { background:var(--cue-rose); }
+.cue-location { border-radius:22px 42px 22px 22px; }
+.cue-location address { color:var(--ink); max-width:36ch; font-style:normal; font-size:1rem; line-height:1.55; }
+.cue-explore { padding-block:.65rem 4.2rem; }
+.cue-event { color:#fff2eb; background:#2d1c26; border-radius:22px 48px 22px 22px; }
+.cue-event .cue-tile-top svg, .cue-event .cue-text-link { color:#ffb0b5; }
+.cue-event .cue-tile-meta { color:#eed6dc; }
+.cue-event-title { color:#fff2eb; font-size:clamp(1.55rem,3vw,2.55rem); font-weight:650; line-height:1.15; letter-spacing:-.04em; margin-bottom:.65rem; overflow-wrap:anywhere; }
+.cue-tile-actions { display:flex; flex-wrap:wrap; gap:.1rem 1rem; }
+@media (max-width:1000px) {
+    .cue-landing-shell .container { width:calc(100% - 44px); }
+    .cue-landing-shell .desktop-nav { gap:1rem; }
+    .cue-landing-shell .desktop-book { display:none; }
+    .cue-home-hero { gap:1.5rem; }
+}
+@media (max-width:760px) {
+    .cue-landing-shell .container { width:calc(100% - 32px); }
+    .cue-landing-shell .header-inner { min-height:68px; }
+    .cue-wordmark { width:133px; height:65px; }
+    .cue-home-hero { grid-template-columns:1fr; gap:1.4rem; padding-block:1.5rem 1.8rem; }
+    .cue-intro { padding-block:0; }
+    .cue-intro h1 { font-size:clamp(2.9rem,10vw,4.9rem); margin-block:.9rem 1rem; }
+    .cue-hero-actions { margin-top:1rem; }
+    .cue-break-art { border-radius:22px 22px 50px 22px; aspect-ratio:1.5; }
+    .cue-break-art figcaption { padding:1.4rem 1.8rem .85rem .95rem; }
+    .cue-visit-grid { grid-template-columns:repeat(2,minmax(0,1fr)); }
+    .cue-location { grid-column:1/-1; }
+    .cue-explore-grid { grid-template-columns:1fr; }
+    .cue-tile-top { gap:.5rem; }
+    .cue-tile-top svg { width:20px; height:20px; }
+    .cue-tile-meta { font-size:.83rem; }
+    .cue-explore { padding-bottom:2.6rem; }
+}
+@media (max-width:360px) { .cue-visit-grid { grid-template-columns:1fr; } }
+@media (prefers-reduced-motion:reduce) { .cue-landing-shell .button:hover { transform:none; } }

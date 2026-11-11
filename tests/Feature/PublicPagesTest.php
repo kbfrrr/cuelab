@@ -57,4 +57,20 @@ class PublicPagesTest extends TestCase
         $this->post('/contact', ['message' => 'test'])->assertStatus(405);
         $this->post('/booking')->assertStatus(419);
     }
+
+    public function test_homepage_shows_verified_overnight_hours_and_table_rate(): void
+    {
+        foreach (range(0, 6) as $day) {
+            OperatingHour::factory()->create([
+                'day_of_week' => $day,
+                'is_verified' => true,
+                'is_closed' => $day === 3,
+                'opens_at' => $day === 3 ? null : '16:00:00',
+                'closes_at' => $day === 3 ? null : '02:00:00',
+            ]);
+        }
+        ServiceRate::factory()->create(['amount_minor' => 20000, 'unit' => 'table/hour', 'currency' => 'PHP', 'is_verified' => true]);
+
+        $this->get('/')->assertOk()->assertSee('Thursday–Tuesday')->assertSee('4:00 PM–2:00 AM the next day')->assertSee('₱200');
+    }
 }
