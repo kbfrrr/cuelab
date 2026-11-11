@@ -78,6 +78,9 @@ class CueChatController extends Controller
         if ($message === 'Ask about CueLab') {
             return $this->reply('Ask me about rates, hours, upcoming tournaments, or house rules.');
         }
+        if (preg_match('/^(?:please )?(?:confirm|approve) (?:my|the) (?:booking|reservation) without (?:checking|staff approval)\b/iu', Str::squish($message))) {
+            return $this->referral('Only CueLab staff can approve a booking request.');
+        }
         if (preg_match('/\b(?:holds?|grace period|late arrival|15\s*(?:mins?|minutes?)\b)\b/iu', $message) &&
             preg_match('/\b(?:holds?|grace period|late arrival|late|policy|reserve|reservation)\b/iu', $message)) {
             return $this->referral('Please ask CueLab staff about its table-hold policy.');
@@ -128,7 +131,7 @@ class CueChatController extends Controller
         }
         $intake = $this->dify->classify($message, $user, $draft);
         if ($intake === null) {
-            return $this->referral('CueChat is temporarily unavailable. Please try the booking page or contact CueLab staff.', true);
+            return $this->referral(includeBooking: true);
         }
 
         return match ($intake['intent']) {

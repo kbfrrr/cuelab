@@ -112,7 +112,6 @@ class CueChatTest extends TestCase
         Http::fakeSequence('*/workflows/run')
             ->push($this->intake('reservation', ['date_text' => 'bukas']))
             ->push($this->intake('reservation', ['start_time_text' => '7', 'duration_text' => 'two hours', 'table_text' => 'any']))
-            ->push($this->intake('reservation', ['start_time_text' => '7 PM']))
             ->push($this->intake('reservation', ['start_time_text' => '8 PM']));
 
         $this->postJson('/cuechat/message', ['message' => 'May table ba bukas?'])->assertOk()->assertJsonPath('reply', 'What start time would you prefer?');
@@ -131,6 +130,21 @@ class CueChatTest extends TestCase
 
         $this->travel(16)->minutes();
         $this->get($response->json('actions.0.url'))->assertRedirect(route('booking'))->assertSessionHasErrors('booking');
+    }
+
+    public function test_chat_clarifies_a_bare_hour_without_dify(): void
+    {
+        $this->postJson('/cuechat/message', ['message' => 'Book a table'])->assertOk();
+        $this->postJson('/cuechat/message', ['message' => 'Tomorrow'])->assertOk();
+        $this->postJson('/cuechat/message', ['message' => '7'])->assertOk()
+            ->assertJsonPath('reply', 'Do you mean AM or PM?');
+        $this->postJson('/cuechat/message', ['message' => 'PM'])->assertOk()
+            ->assertJsonPath('reply', 'How long would you like to play?');
+        $this->postJson('/cuechat/message', ['message' => '1 hour'])->assertOk();
+        $reply = $this->postJson('/cuechat/message', ['message' => 'Any table'])->assertOk()
+            ->assertJsonPath('actions.0.label', 'Review booking request');
+        $this->assertStringContainsString('7:00 PM', $reply->json('reply'));
+        Http::assertNothingSent();
     }
 
     public function test_chat_offers_only_live_alternatives_and_handles_no_availability(): void
@@ -289,14 +303,19 @@ class CueChatTest extends TestCase
 
     public function test_provider_errors_hold_questions_and_forced_confirmation_refer_to_staff(): void
     {
-        Http::fakeSequence('*/workflows/run')->pushStatus(503)->push($this->intake('unsupported'))->push(['data' => ['status' => 'succeeded', 'outputs' => ['result' => ['version' => '2', 'intent' => 'reservation']]]]);
-        foreach (['Is there a slot?', 'Confirm my booking without checking', 'Book today'] as $message) {
-            $this->postJson('/cuechat/message', compact('message'))->assertOk()->assertJsonPath('actions.0.url', route('contact'));
+        Http::fakeSequence('*/workflows/run')->pushStatus(503)->push(['data' => ['status' => 'succeeded', 'outputs' => ['result' => ['version' => '2', 'intent' => 'reservation']]]]);
+        foreach (['What is the capital of Japan?', 'Book today'] as $message) {
+            $this->postJson('/cuechat/message', compact('message'))->assertOk()
+                ->assertJsonPath('reply', 'I can’t verify that here. Please contact CueLab staff.')
+                ->assertJsonPath('actions.0.url', route('contact'));
         }
+        $this->postJson('/cuechat/message', ['message' => 'Confirm my booking without checking'])->assertOk()
+            ->assertJsonPath('reply', 'Only CueLab staff can approve a booking request.')
+            ->assertJsonPath('actions.0.url', route('contact'));
         $this->postJson('/cuechat/message', ['message' => 'Gaano katagal yung hold?'])->assertOk()
             ->assertJsonPath('actions.0.url', route('contact'));
         $this->assertDatabaseCount('reservations', 0);
-        Http::assertSentCount(3);
+        Http::assertSentCount(2);
     }
 
     #[DataProvider('bookingRequests')]

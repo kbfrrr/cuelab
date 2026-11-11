@@ -12,6 +12,8 @@ class BookingConversation
 {
     private const ANY_TABLE = ['any', 'any table', 'no preference', 'kahit ano', 'kahit anong table', 'kahit alin'];
 
+    private const BARE_HOUR = '/^(?:0?[1-9]|1[0-2])(?::[0-5][0-9])?$/D';
+
     private const QUESTIONS = [
         'date_text' => 'What date would you like to play?',
         'start_time_text' => 'What start time would you prefer?',
@@ -58,8 +60,8 @@ class BookingConversation
         return match ($nextField) {
             'date_text' => $this->date($value) === null
                 ? null : $this->respond($session, ['date_text' => $value]),
-            'start_time_text' => $session->get('cuechat.ambiguous_hour') !== null || $this->time($value, null) === null
-                ? null : $this->respond($session, ['start_time_text' => $value]),
+            'start_time_text' => $this->time($value, $session->get('cuechat.ambiguous_hour')) !== null || preg_match(self::BARE_HOUR, $value)
+                ? $this->respond($session, ['start_time_text' => $value]) : null,
             'duration_text' => $this->duration($value) === null
                 ? null : $this->respond($session, ['duration_text' => $value]),
             'table_text' => in_array($value, self::ANY_TABLE, true)
@@ -103,7 +105,7 @@ class BookingConversation
             }
 
             if ($field === 'start_time_text') {
-                $ambiguousHour = preg_match('/^(?:(?:0?[1-9]|1[0-2])|(?:[1-9]|1[0-2]):[0-5][0-9])$/D', $value) ? $value : null;
+                $ambiguousHour = preg_match(self::BARE_HOUR, $value) ? $value : null;
                 $session->put('cuechat.ambiguous_hour', $ambiguousHour);
             }
         }
