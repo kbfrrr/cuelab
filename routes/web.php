@@ -12,7 +12,7 @@ foreach (['home' => '/', 'about' => '/about', 'rates' => '/rates', 'contact' => 
 }
 
 Route::middleware(PrivateBookingResponse::class)->group(function (): void {
-    Route::post('/cuechat/message', CueChatController::class)->middleware('throttle:cuechat')->block(25, 25)->name('cuechat.message');
+    Route::post('/cuechat/message', CueChatController::class)->middleware('throttle:cuechat')->block(50, 25)->name('cuechat.message');
     Route::get('/booking', [BookingController::class, 'index'])->name('booking');
     Route::post('/booking/review', [BookingController::class, 'review'])->middleware('throttle:booking-review')->name('booking.review');
     Route::post('/booking', [BookingController::class, 'store'])->middleware('throttle:booking-store')->name('booking.store');

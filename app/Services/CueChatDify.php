@@ -30,6 +30,10 @@ class CueChatDify
             || ! is_array($result) || ($result['version'] ?? null) !== '1'
             || ! in_array($result['intent'] ?? null, self::INTENTS, true)
             || ! is_array($result['details'] ?? null)) {
+            if ($data !== []) {
+                Log::warning('CueChat Intake returned no usable result', ['workflow_succeeded' => data_get($data, 'data.status') === 'succeeded']);
+            }
+
             return null;
         }
 
@@ -75,12 +79,14 @@ class CueChatDify
 
         try {
             $response = Http::withToken($key)->acceptJson()->connectTimeout(3)->timeout(10)
+                ->retry(2, 200, fn (\Throwable $error): bool => $error instanceof ConnectionException, throw: false)
                 ->post(rtrim(config('services.dify.base_url'), '/').'/'.$endpoint, [
                     ...$payload,
                     'response_mode' => 'blocking',
                 ]);
-        } catch (ConnectionException) {
-            Log::warning('CueChat Dify connection failed', ['endpoint' => $endpoint]);
+        } catch (ConnectionException $error) {
+            preg_match('/\bcURL error (\d+)\b/', $error->getMessage(), $code);
+            Log::warning('CueChat Dify connection failed', ['endpoint' => $endpoint, 'curl_error' => isset($code[1]) ? (int) $code[1] : null]);
 
             return [];
         }

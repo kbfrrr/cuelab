@@ -124,6 +124,18 @@ class CueChatTest extends TestCase
         Http::assertNothingSent();
     }
 
+    public function test_chat_retries_a_failed_connection_and_keeps_the_booking_details(): void
+    {
+        Http::fakeSequence('*/workflows/run')
+            ->pushFailedConnection()
+            ->push($this->intake('reservation', ['date_text' => 'tomorrow', 'start_time_text' => '6 PM', 'duration_text' => '2 hours']));
+
+        $this->postJson('/cuechat/message', ['message' => 'Tomorrow 6 PM for 2 hours'])
+            ->assertOk()->assertJsonPath('reply', 'Which table would you prefer? You can say “any.”');
+        $this->assertSame('120 minutes', session('cuechat.draft.duration_text'));
+        $this->assertDatabaseCount('reservations', 0);
+    }
+
     public function test_provider_errors_hold_questions_and_forced_confirmation_refer_to_staff(): void
     {
         Http::fakeSequence('*/workflows/run')->pushStatus(503)->push($this->intake('unsupported'))->push(['data' => ['status' => 'succeeded', 'outputs' => ['result' => ['version' => '2', 'intent' => 'reservation']]]]);

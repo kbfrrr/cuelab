@@ -8,7 +8,6 @@ export default () => ({
     openChat() {
         this.$refs.panel.showModal();
         this.open = true;
-        this.$refs.message.focus();
     },
 
     closeChat() {
@@ -23,6 +22,7 @@ export default () => ({
         this.busy = true;
         this.message = '';
         this.history.push({ customer: true, text: message, actions: [] });
+        this.$nextTick(() => this.scrollToLatest());
         const { messageUrl, bookingUrl, contactUrl } = this.$root.dataset;
 
         try {
@@ -35,7 +35,7 @@ export default () => ({
                     'X-CSRF-TOKEN': this.$refs.form.elements._token.value,
                 },
                 body: JSON.stringify({ message }),
-                signal: AbortSignal.timeout(24000),
+                signal: AbortSignal.timeout(45000),
             });
             if (!response.ok) throw new Error(response.status === 429 ? 'rate-limit' : 'request');
             const result = await response.json();
@@ -54,12 +54,17 @@ export default () => ({
         } finally {
             this.busy = false;
             this.$nextTick(() => {
-                this.$refs.history.scrollTop = this.$refs.history.scrollHeight;
+                this.scrollToLatest();
                 if (this.open && this.$refs.panel.contains(document.activeElement)
                     && document.activeElement.matches('button:disabled')) {
                     this.$refs.message.focus();
                 }
             });
         }
+    },
+
+    scrollToLatest() {
+        const history = this.$refs.history;
+        history.scrollTop = history.scrollHeight;
     },
 });
