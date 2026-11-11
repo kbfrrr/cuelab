@@ -150,6 +150,54 @@
 .cue-public-shell .service-notice[role=alert], .cue-public-shell .service-notice[role=alert] p { color:var(--cue-red); }
 .cue-public-shell .site-footer { background:var(--cue-paper); }
 .cue-public-shell .chat-panel { border-radius:20px; box-shadow:var(--cue-art-shadow); }
+
+.cue-public-shell dialog.chat-panel {
+    inset: auto clamp(12px, 4vw, 26px) clamp(12px, 4vw, 26px) auto;
+    margin: 0;
+    padding: clamp(16px, 4vw, 24px);
+    width: min(410px, calc(100vw - 24px));
+    max-height: calc(100dvh - 24px);
+    overflow: auto;
+    color: var(--ink);
+}
+
+.chat-panel::backdrop { background: #14101266; }
+.cue-public-shell .chat-panel .cuechat-welcome { margin: 12px 0; }
+.cuechat-options { display: flex; flex-wrap: wrap; gap: 7px; margin-bottom: 12px; }
+.cuechat-options button {
+    border: 1px solid var(--line);
+    border-radius: 999px;
+    padding: 7px 10px;
+    font-size: 12px;
+    color: var(--ink);
+    background: var(--panel);
+}
+.cuechat-options button:hover:not(:disabled) { border-color: currentColor; }
+.cuechat-log {
+    display: grid;
+    gap: 8px;
+    max-height: min(35dvh, 280px);
+    overflow: auto;
+    overscroll-behavior: contain;
+    padding: 2px 3px;
+    margin-bottom: 12px;
+}
+.cuechat-turn {
+    padding: 9px 11px;
+    width: fit-content;
+    max-width: 95%;
+    border-radius: 9px;
+    border: 1px solid var(--line);
+    background: var(--panel);
+    overflow-wrap: anywhere;
+}
+.cuechat-turn.cuechat-customer { justify-self: end; background: var(--green); color: var(--white); }
+.cue-public-shell .chat-panel .cuechat-turn p { margin: 0; white-space: pre-line; }
+.cuechat-turn a { display: block; margin-top: 5px; font-size: 13px; }
+.cuechat-compose { display: flex; align-items: center; gap: 8px; }
+.cuechat-compose input { flex: 1; min-width: 0; margin: 0; font-size: 16px; }
+.cuechat-compose .button { flex-shrink: 0; }
+.cue-public-shell .chat-panel .cuechat-progress { margin: 6px 0 0; font-size: 12px; }
 @media (max-width:760px) {
     .cue-public-shell .page-heading h1 { font-size:clamp(2.6rem,10vw,3.5rem); }
     .cue-public-shell .detail-panel, .cue-public-shell .empty-state { border-radius:17px; }

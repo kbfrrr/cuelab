@@ -9,7 +9,7 @@
     <script>try { document.documentElement.dataset.theme = localStorage.getItem('cuelab-theme') || (matchMedia('(prefers-color-scheme: dark)').matches ? 'dark' : 'light'); } catch(e) {}</script>
     @vite(['resources/css/app.css','resources/js/app.js'])
 </head>
-<body class="cue-public-shell" x-data="siteShell" @keydown.escape.window="menuOpen = false; chatOpen = false">
+<body class="cue-public-shell" x-data="siteShell" @keydown.escape.window="menuOpen = false">
 <a class="skip-link" href="#main">Skip to content</a>
 <header class="site-header">
     <div class="container header-inner">
@@ -34,15 +34,13 @@
     </nav>
 </header>
 @if($informationUnavailable)<div class="service-notice container" role="status">Live venue information is temporarily unavailable. You can still explore the site.</div>@endif
+@if(app()->isLocal() && basename(config('database.connections.sqlite.database')) === 'cuelab-demo.sqlite')
+    <p class="service-notice container">Local demo · Booking schedules, prices, and customer records are sample data.</p>
+@endif
 <main id="main">{{ $slot }}</main>
 <footer class="site-footer">
     <div class="container footer-top"><div><a class="brand" href="{{ route('home') }}"><span class="brand-ball">8</span> CueLab.</a><p>A place for the game. A reason to get together.</p></div><a class="text-link" href="{{ route('contact') }}">Get in touch <span aria-hidden="true">↗</span></a></div>
     <div class="container footer-bottom"><span>© {{ date('Y') }} CueLab</span><span>CueLab Billiards · Angeles, Pampanga</span><a href="{{ route('privacy') }}">Privacy notice</a></div>
 </footer>
-<aside class="chat-panel" x-show="chatOpen" x-cloak @click.outside="chatOpen = false" role="region" aria-labelledby="chat-title">
-    <div class="chat-heading"><div><span class="eyebrow">AI assistant</span><h2 id="chat-title">CueLab assistant</h2></div><button class="icon-button" @click="chatOpen = false; $refs.chatToggle.focus()" aria-label="Close AI assistant">×</button></div>
-    <p>The AI assistant is being prepared. It cannot answer questions or make reservations yet.</p>
-    <a class="button" href="{{ route('contact') }}">Talk to staff ↗</a><a class="chat-privacy" href="{{ route('privacy') }}">How your information will be used</a>
-</aside>
-<button class="chat-toggle" x-ref="chatToggle" @click="chatOpen = !chatOpen" :aria-expanded="chatOpen" aria-controls="chat-title"><span aria-hidden="true">✳</span> CueLab AI <span class="chat-badge">Soon</span></button>
+<x-cuechat />
 </body></html>

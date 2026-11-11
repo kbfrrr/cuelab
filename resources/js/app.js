@@ -1,7 +1,9 @@
 import Alpine from 'alpinejs';
+import cueChat from './cuechat';
+
+Alpine.data('cueChat', cueChat);
 Alpine.data('siteShell', () => ({
     menuOpen: false,
-    chatOpen: false,
     theme: document.documentElement.dataset.theme || 'light',
     toggleTheme() {
         this.theme = this.theme === 'dark' ? 'light' : 'dark';

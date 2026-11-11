@@ -36,6 +36,7 @@ class AppServiceProvider extends ServiceProvider
         foreach (['review' => 20, 'store' => 10, 'lookup' => 10, 'status' => 30] as $endpoint => $attempts) {
             RateLimiter::for('booking-'.$endpoint, fn (Request $request) => Limit::perMinute($attempts)->by($request->ip()));
         }
+        RateLimiter::for('cuechat', fn (Request $request) => Limit::perMinute(20)->by($request->ip()));
         foreach (['lookup', 'register'] as $endpoint) {
             RateLimiter::for('tournament-'.$endpoint, fn (Request $request) => Limit::perMinute(10)->by($request->ip()));
         }
