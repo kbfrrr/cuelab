@@ -104,7 +104,8 @@ class CueChatController extends Controller
             return $this->hours();
         }
 
-        $bookingReply = $this->booking->answerPendingQuestion($session, $question);
+        $bookingReply = $this->booking->answerStructuredRequest($session, $question)
+            ?? $this->booking->answerPendingQuestion($session, $question);
         if ($bookingReply !== null) {
             return $bookingReply;
         }

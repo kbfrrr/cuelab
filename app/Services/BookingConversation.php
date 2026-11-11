@@ -22,6 +22,25 @@ class BookingConversation
     public function __construct(private ReservationService $reservations) {}
 
     /** @return array{reply: string, actions: list<array{label: string, url: string}>}|null */
+    public function answerStructuredRequest(Session $session, string $question): ?array
+    {
+        if (! preg_match('/^may table ba (?:sa )?(?<date>.+?) ng (?<time>\d{1,2}(?::\d{2})?\s*(?:am|pm)),\s*(?<duration>[^,]+),\s*(?<table>[^,]+)$/u', $question, $parts)
+            || $this->date($parts['date']) === null
+            || $this->time($parts['time'], null) === null
+            || $this->duration($parts['duration']) === null
+            || ! in_array($parts['table'], self::ANY_TABLE, true)) {
+            return null;
+        }
+
+        return $this->respond($session, [
+            'date_text' => $parts['date'],
+            'start_time_text' => $parts['time'],
+            'duration_text' => $parts['duration'],
+            'table_text' => $parts['table'],
+        ]);
+    }
+
+    /** @return array{reply: string, actions: list<array{label: string, url: string}>}|null */
     public function answerPendingQuestion(Session $session, string $question): ?array
     {
         $draft = $session->get('cuechat.draft');

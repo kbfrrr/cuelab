@@ -92,6 +92,20 @@ class CueChatTest extends TestCase
         Http::assertNothingSent();
     }
 
+    public function test_chat_can_quote_a_complete_taglish_request_without_dify(): void
+    {
+        Http::preventStrayRequests();
+
+        $reply = $this->postJson(route('cuechat.message'), [
+            'message' => 'May table ba bukas ng 8 PM, isang oras, kahit anong table?',
+        ])->assertOk()->assertJsonPath('actions.0.label', 'Review booking request')->json('reply');
+
+        $this->assertStringContainsString('8:00 PM', $reply);
+        $this->assertStringContainsString('60 minutes', $reply);
+        $this->assertDatabaseCount('reservations', 0);
+        Http::assertNothingSent();
+    }
+
     public function test_chat_keeps_booking_details_corrects_ambiguous_time_and_prefills_the_form(): void
     {
         Http::fakeSequence('*/workflows/run')
