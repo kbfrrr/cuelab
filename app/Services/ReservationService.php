@@ -9,6 +9,7 @@ use App\Models\OperatingHour;
 use App\Models\Reservation;
 use App\Models\User;
 use Carbon\CarbonImmutable;
+use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Support\Collection;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Validator;
@@ -32,7 +33,17 @@ class ReservationService
         if ($from->lt($walkIn ? now()->startOfMinute() : now()) || $from->gt(now()->addDays(90))) {
             $this->fail('Choose a future time within the next 90 days.');
         }
-        $withinHours = false;
+        $close = $this->closingTime($from);
+        if ($close === null || $to->gt($close)) {
+            $this->fail('That time is outside verified opening hours.');
+        }
+
+        return [$from, $to];
+    }
+
+    private function closingTime(CarbonImmutable $from): ?CarbonImmutable
+    {
+        $closingTime = null;
         foreach ([$from->startOfDay(), $from->startOfDay()->subDay()] as $day) {
             $hours = OperatingHour::where('day_of_week', $day->dayOfWeek)->where('is_verified', true)->first();
             if (! $hours || $hours->is_closed || ! $hours->opens_at || ! $hours->closes_at) {
@@ -43,24 +54,25 @@ class ReservationService
             if ($close->lte($open)) {
                 $close = $close->addDay();
             }
-            if ($from->gte($open) && $to->lte($close)) {
-                $withinHours = true;
+            if ($from->gte($open) && $from->lt($close) && ($closingTime === null || $close->gt($closingTime))) {
+                $closingTime = $close;
             }
         }
-        if (! $withinHours) {
-            $this->fail('That time is outside verified opening hours.');
-        }
 
-        return [$from, $to];
+        return $closingTime;
     }
 
     public function conflicts(int $tableId, CarbonImmutable $from, CarbonImmutable $to, ?int $except = null): bool
     {
         return Reservation::where('billiard_table_id', $tableId)->when($except, fn ($q) => $q->where('id', '!=', $except))
-            ->where('starts_at', '<', $to)->where('ends_at', '>', $from)
-            ->where(fn ($q) => $q->where('status', 'confirmed')->orWhere(fn ($q) => $q->where('status', 'pending')->where('hold_expires_at', '>', now())))->exists()
-            || AvailabilityBlock::where(fn ($q) => $q->whereNull('billiard_table_id')->orWhere('billiard_table_id', $tableId))
+            ->blocking()->overlapping($from, $to)->exists()
+            || $this->blocksForTable($tableId)
                 ->where('starts_at', '<', $to)->where('ends_at', '>', $from)->exists();
+    }
+
+    private function blocksForTable(int $tableId): Builder
+    {
+        return AvailabilityBlock::where(fn ($q) => $q->whereNull('billiard_table_id')->orWhere('billiard_table_id', $tableId));
     }
 
     public function available(string $start, int $minutes): Collection
@@ -128,7 +140,7 @@ class ReservationService
         abort_unless($staff->is_staff, 403);
         DB::transaction(function () use ($reservation, $action, $staff): void {
             $this->expire();
-            $record = Reservation::findOrFail($reservation->id);
+            $record = Reservation::lockForUpdate()->findOrFail($reservation->id);
             if (! in_array($action, ['confirmed', 'rejected', 'cancelled']) || ! in_array($record->status, $action === 'cancelled' ? ['pending', 'confirmed'] : ['pending'])) {
                 $this->fail('This request can no longer be changed with that action.');
             }
@@ -139,6 +151,117 @@ class ReservationService
         }, 3);
     }
 
+    /** @return array{ends_at: CarbonImmutable, seconds: int, total_minor: int, shortened: bool, key: string}|null */
+    public function sessionOffer(Reservation $record, CarbonImmutable $start): ?array
+    {
+        $close = $this->closingTime($start);
+        if ($close === null || ! $record->billiardTable?->is_active) {
+            return null;
+        }
+
+        $bookedSeconds = $record->ends_at->timestamp - $record->starts_at->timestamp;
+        $end = $start->addSeconds($bookedSeconds)->min($close);
+        $nextBooking = Reservation::where('billiard_table_id', $record->billiard_table_id)
+            ->whereKeyNot($record->id)->blocking()->overlapping($start, $end)
+            ->orderByRaw(Reservation::EFFECTIVE_START)->first();
+        $nextBlock = $this->blocksForTable($record->billiard_table_id)
+            ->where('starts_at', '<', $end)->where('ends_at', '>', $start)->orderBy('starts_at')->first();
+        if ($nextBooking) {
+            $end = $end->min($nextBooking->effectiveStart());
+        }
+        if ($nextBlock) {
+            $end = $end->min($nextBlock->starts_at);
+        }
+
+        $seconds = $end->timestamp - $start->timestamp;
+        if ($seconds < 900) {
+            return null;
+        }
+
+        $shortened = $seconds < $bookedSeconds;
+        $blocks = intdiv($seconds + 899, 900);
+        $total = $shortened ? intdiv($record->quoted_hourly_rate_minor * $blocks + 3, 4) : $record->quoted_total_minor;
+
+        return ['ends_at' => $end, 'seconds' => $seconds, 'total_minor' => $total, 'shortened' => $shortened,
+            'key' => $shortened ? $end->timestamp.':'.$total : 'full'];
+    }
+
+    private function startSession(Reservation $record, CarbonImmutable $start, ?string $agreedOffer): void
+    {
+        $offer = $this->sessionOffer($record, $start);
+        if ($offer === null) {
+            $this->fail('There are fewer than 15 minutes available on this table. Offer another table or time.');
+        }
+        if (($offer['shortened'] || $agreedOffer !== null) && $agreedOffer !== $offer['key']) {
+            $this->fail('Reopen this action to review the current offer and confirm the guest agrees.');
+        }
+
+        $record->fill(['session_starts_at' => $start, 'session_ends_at' => $offer['ends_at'], 'session_total_minor' => $offer['total_minor']]);
+    }
+
+    public function checkIn(Reservation $reservation, User $staff, ?string $agreedOffer = null): void
+    {
+        abort_unless($staff->is_staff, 403);
+
+        DB::transaction(function () use ($reservation, $agreedOffer): void {
+            $record = Reservation::lockForUpdate()->findOrFail($reservation->id);
+            $now = CarbonImmutable::now();
+            if (! $record->canCheckIn($now)) {
+                $this->fail('This reservation is no longer eligible for check-in.');
+            }
+            if ($record->session_starts_at === null) {
+                $this->startSession($record, $now, $agreedOffer);
+            }
+
+            $record->fill(['checked_in_at' => $now])->save();
+        }, 3);
+    }
+
+    public function recordLateCall(Reservation $reservation, string $outcome, bool $walkInWaiting, User $staff, ?string $agreedOffer = null): void
+    {
+        abort_unless($staff->is_staff, 403);
+        if (! $walkInWaiting || ! in_array($outcome, ['no_answer', 'declined', 'coming'], true)) {
+            $this->fail('Choose a call outcome and confirm a walk-in is waiting and needs this table.');
+        }
+
+        DB::transaction(function () use ($reservation, $outcome, $agreedOffer): void {
+            $record = Reservation::lockForUpdate()->findOrFail($reservation->id);
+            $now = CarbonImmutable::now();
+            if (! $record->canRecordLateCall($now)
+                || ($record->session_starts_at !== null && $outcome !== 'declined')
+                || ($outcome === 'no_answer' && $record->late_contacted_at !== null)) {
+                $this->fail('This call outcome is no longer available for the reservation.');
+            }
+
+            if ($outcome === 'coming') {
+                $this->startSession($record, $now, $agreedOffer);
+            }
+
+            $record->fill(['late_contacted_at' => $now, 'late_contact_outcome' => $outcome]);
+            if ($outcome === 'declined') {
+                $record->status = 'cancelled';
+            }
+            $record->save();
+        }, 3);
+    }
+
+    public function releaseNoShow(Reservation $reservation, bool $walkInWaiting, User $staff): void
+    {
+        abort_unless($staff->is_staff, 403);
+        if (! $walkInWaiting) {
+            $this->fail('Confirm a walk-in is still waiting and needs this table.');
+        }
+
+        DB::transaction(function () use ($reservation): void {
+            $record = Reservation::lockForUpdate()->findOrFail($reservation->id);
+            if (! $record->canReleaseNoShow(CarbonImmutable::now())) {
+                $this->fail('This reservation is no longer eligible for release as a no-show.');
+            }
+
+            $record->update(['status' => 'no_show']);
+        }, 3);
+    }
+
     public function block(array $data, User $staff): AvailabilityBlock
     {
         abort_unless($staff->is_staff, 403);
@@ -146,7 +269,10 @@ class ReservationService
 
         return DB::transaction(function () use ($data, $staff): AvailabilityBlock {
             $this->expire();
-            $conflict = Reservation::when($data['billiard_table_id'] ?? null, fn ($q, $id) => $q->where('billiard_table_id', $id))->whereIn('status', ['pending', 'confirmed'])->where('starts_at', '<', $data['ends_at'])->where('ends_at', '>', $data['starts_at'])->exists();
+            $from = CarbonImmutable::parse($data['starts_at']);
+            $to = CarbonImmutable::parse($data['ends_at']);
+            $conflict = Reservation::when($data['billiard_table_id'] ?? null, fn ($q, $id) => $q->where('billiard_table_id', $id))
+                ->blocking()->overlapping($from, $to)->exists();
             if ($conflict) {
                 $this->fail('Resolve overlapping bookings before blocking this time.');
             }

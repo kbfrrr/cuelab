@@ -96,30 +96,31 @@ class CueLabDemoSeeder extends Seeder
             ]);
         }
 
-        $standard = ServiceRate::updateOrCreate(['name' => 'Table rental'], [
-            'amount_minor' => 20000, 'description' => 'Standard table rental per hour.', 'is_verified' => true, 'is_active' => true,
-        ]);
-        $premium = ServiceRate::updateOrCreate(['name' => 'Demo premium table'], [
-            'amount_minor' => 25000, 'description' => 'Sample rate for a premium table.', 'is_verified' => true, 'is_active' => true,
+        $rate = ServiceRate::updateOrCreate(['name' => 'Table rental'], [
+            'amount_minor' => 20000, 'description' => 'Hourly rental for any billiard table.', 'is_verified' => true, 'is_active' => true,
         ]);
         ServiceRate::updateOrCreate(['name' => 'Demo retired rate'], [
             'amount_minor' => 15000, 'description' => 'Sample archived rate.', 'is_verified' => false, 'is_active' => false,
         ]);
 
-        BilliardTable::whereIn('name', ['Demo Table 7', 'Demo Table 8'])
-            ->where('service_rate_id', $premium->id)
-            ->where('is_active', false)
-            ->whereDoesntHave('reservations')
-            ->whereDoesntHave('availabilityBlocks')
-            ->delete();
+        $legacyRate = ServiceRate::where('name', 'Demo premium table')->first();
+        if ($legacyRate) {
+            $legacyRate->tables()->whereIn('name', ['Demo Table 7', 'Demo Table 8'])
+                ->where('is_active', false)
+                ->whereDoesntHave('reservations')
+                ->whereDoesntHave('availabilityBlocks')
+                ->delete();
+            $legacyRate->tables()->update(['service_rate_id' => $rate->id, 'type' => 'Standard', 'description' => 'Demo billiard table.']);
+            $legacyRate->delete();
+        }
 
         $tables = [];
         foreach (range(1, 6) as $index) {
             $tables[] = BilliardTable::updateOrCreate(['name' => "Demo Table {$index}"], [
-                'type' => $index >= 5 ? 'Premium' : 'Standard',
-                'service_rate_id' => $index >= 5 ? $premium->id : $standard->id,
+                'type' => 'Standard',
+                'service_rate_id' => $rate->id,
                 'is_active' => true,
-                'description' => $index >= 5 ? 'Demo premium table with fresh cloth and overhead lighting.' : 'Demo standard table for casual play and practice.',
+                'description' => 'Demo billiard table.',
             ]);
         }
 
@@ -198,6 +199,12 @@ class CueLabDemoSeeder extends Seeder
                 'hold_expires_at' => $status === 'pending' ? $submittedAt->addHour() : null,
                 'reviewed_by' => $reviewed ? $staff->id : null,
                 'reviewed_at' => $reviewedAt,
+                'late_contacted_at' => null,
+                'late_contact_outcome' => null,
+                'checked_in_at' => null,
+                'session_starts_at' => null,
+                'session_ends_at' => null,
+                'session_total_minor' => null,
                 'staff_notes' => match ($status) {
                     'cancelled' => 'Guest called to reschedule their group visit.',
                     'rejected' => 'Guest requested a different time during confirmation.',

@@ -52,7 +52,8 @@ class StaffAnalytics extends Widget
         });
 
         return ['metrics' => $metrics, 'activity' => $activity, 'peak' => max(1, $activity->max('count')),
-            'schedule' => Reservation::with('billiardTable')->where('status', 'confirmed')->where('ends_at', '>', now())->orderBy('starts_at')->limit(5)->get(),
+            'schedule' => Reservation::with('billiardTable')->where('status', 'confirmed')
+                ->whereRaw(Reservation::EFFECTIVE_END.' > ?', [now()])->orderByRaw(Reservation::EFFECTIVE_START)->limit(5)->get(),
             'events' => Tournament::whereIn('status', ['published', 'closed'])->where('ends_at', '>', now())->orderBy('starts_at')->limit(4)->get()];
     }
 }

@@ -29,7 +29,7 @@ class PublicPagesTest extends TestCase
         ServiceRate::factory()->create(['name' => 'Approved rate', 'amount_minor' => 12500, 'is_verified' => true]);
         ServiceRate::factory()->create(['name' => 'Retired rate', 'is_verified' => true, 'is_active' => false]);
         $this->get('/rates')->assertOk()->assertSee('Approved rate')->assertSee('125.00')
-            ->assertDontSee('30.00')->assertDontSee('Unverified draft')->assertDontSee('Retired rate');
+            ->assertDontSee('200.00')->assertDontSee('Hourly rental for any billiard table.')->assertDontSee('Retired rate');
         $this->get('/')->assertOk()->assertDontSee('Unapproved address');
     }
 

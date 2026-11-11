@@ -35,7 +35,7 @@
             @if($schedule->isEmpty())
             <div class="cl-empty"><x-filament::icon icon="heroicon-o-calendar-days" /><h4>A clear schedule</h4><p>Confirmed reservations and walk-ins will appear here.</p></div>
             @else
-            <div class="cl-table-scroll"><table class="cl-table"><caption class="sr-only">Upcoming confirmed bookings, times in Asia/Manila</caption><thead><tr><th>Table</th><th>Starts</th><th>Ends</th><th>Status</th></tr></thead><tbody>@foreach($schedule as $booking)<tr><td>{{ $booking->billiardTable->name }}</td><td>{{ $booking->starts_at->format('M j, g:i A') }}</td><td>{{ $booking->ends_at->format('M j, g:i A') }}</td><td><span class="cl-status">Confirmed</span></td></tr>@endforeach</tbody></table></div>
+            <div class="cl-table-scroll"><table class="cl-table"><caption class="sr-only">Upcoming confirmed bookings, times in Asia/Manila</caption><thead><tr><th>Table</th><th>Starts</th><th>Ends</th><th>Status</th></tr></thead><tbody>@foreach($schedule as $booking)<tr><td>{{ $booking->billiardTable->name }}</td><td>{{ $booking->effectiveStart()->format('M j, g:i A') }}</td><td>{{ $booking->effectiveEnd()->format('M j, g:i A') }}</td><td><span class="cl-status">Confirmed</span></td></tr>@endforeach</tbody></table></div>
             @endif
         </section>
         <section class="cl-panel" aria-labelledby="cl-events-title">

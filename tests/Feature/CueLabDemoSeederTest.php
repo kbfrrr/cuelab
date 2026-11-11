@@ -18,7 +18,8 @@ class CueLabDemoSeederTest extends TestCase
     public function test_demo_seeder_can_be_rerun_and_sample_codes_open_the_guest_status_pages(): void
     {
         $this->seed(CueLabDemoSeeder::class);
-        $premium = ServiceRate::where('name', 'Demo premium table')->firstOrFail();
+        $premium = ServiceRate::factory()->create(['name' => 'Demo premium table', 'amount_minor' => 25000, 'is_verified' => true]);
+        BilliardTable::where('name', 'Demo Table 5')->update(['type' => 'Premium', 'service_rate_id' => $premium->id]);
         foreach (['Demo Table 7', 'Demo Table 8'] as $name) {
             BilliardTable::factory()->for($premium)->create(['name' => $name, 'is_active' => false]);
         }
@@ -27,7 +28,7 @@ class CueLabDemoSeederTest extends TestCase
         foreach ([
             'users' => 4,
             'operating_hours' => 7,
-            'service_rates' => 3,
+            'service_rates' => 2,
             'billiard_tables' => 6,
             'reservations' => 24,
             'availability_blocks' => 6,
@@ -37,6 +38,10 @@ class CueLabDemoSeederTest extends TestCase
         ] as $table => $count) {
             $this->assertDatabaseCount($table, $count);
         }
+        $rate = ServiceRate::where('name', 'Table rental')->firstOrFail();
+        $this->assertSame(20000, $rate->amount_minor);
+        $this->assertSame(6, $rate->tables()->where('type', 'Standard')->where('is_active', true)->count());
+        $this->assertDatabaseMissing('service_rates', ['name' => 'Demo premium table']);
         $this->assertTrue(app(ReservationService::class)->enabled());
 
         $booking = Reservation::where('status', 'pending')->firstOrFail();
