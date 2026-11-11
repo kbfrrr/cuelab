@@ -33,7 +33,7 @@
 .cue-public-shell .header-inner { min-height:76px; gap:22px; }
 .cue-public-shell .desktop-nav { gap:clamp(1rem,2.5vw,2rem); }
 .cue-public-shell .desktop-nav a, .cue-public-shell .mobile-nav a { display:flex; align-items:center; min-height:44px; }
-.cue-public-shell nav a[aria-current] { color:var(--cue-red); }
+.cue-public-shell nav a[aria-current], .cue-public-shell .staff-login-link { color:var(--cue-red); }
 .cue-public-shell .button { border-radius:10px; min-height:44px; gap:.7rem; }
 .cue-public-shell .icon-button { width:44px; height:44px; }
 .cue-public-shell .chat-toggle { border-color:#f3aaaf; }

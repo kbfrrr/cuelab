@@ -9,6 +9,7 @@ use Filament\Schemas\Schema;
 use Filament\Tables\Columns\TextColumn;
 use Filament\Tables\Table;
 use Illuminate\Database\Eloquent\Model;
+use Illuminate\Support\Str;
 
 class StaffActionResource extends Resource
 {
@@ -54,7 +55,10 @@ class StaffActionResource extends Resource
     {
         return $table->columns([TextColumn::make('user.name')->searchable()->sortable(),
             TextColumn::make('action')->searchable()->sortable(),
-            TextColumn::make('subject_type')->searchable()->sortable(),
+            TextColumn::make('subject_type')
+                ->formatStateUsing(fn (string $state): string => Str::headline(class_basename($state)))
+                ->searchable()
+                ->sortable(),
             TextColumn::make('subject_id')->searchable()->sortable(),
             TextColumn::make('created_at')->searchable()->sortable()])->filters([])->recordActions([])->defaultSort('id', 'desc');
     }

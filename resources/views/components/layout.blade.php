@@ -18,6 +18,7 @@
             @foreach (['home'=>'Home','about'=>'About','rates'=>'Rates & services','tournaments'=>'Tournaments','contact'=>'Contact'] as $name=>$label)
                 <a href="{{ route($name) }}" @if(request()->routeIs($name)) aria-current="page" @endif>{{ $label }}</a>
             @endforeach
+            <a class="staff-login-link" href="{{ route('filament.admin.auth.login') }}">Staff login</a>
         </nav>
         <div class="header-actions">
             <button class="icon-button" @click="toggleTheme" :aria-label="theme === 'dark' ? 'Switch to light theme' : 'Switch to dark theme'"><span x-text="theme === 'dark' ? '☀' : '◐'" aria-hidden="true">◐</span></button>
@@ -29,6 +30,7 @@
         @foreach (['home'=>'Home','about'=>'About','rates'=>'Rates & services','tournaments'=>'Tournaments','contact'=>'Contact','booking'=>'Plan a visit'] as $name=>$label)
             <a href="{{ $name === 'booking' && $visitUrl ? $visitUrl : route($name) }}" @click="menuOpen = false" @if(request()->routeIs($name)) aria-current="page" @endif>{{ $name === 'booking' ? $visitLabel : $label }}</a>
         @endforeach
+        <a class="staff-login-link" href="{{ route('filament.admin.auth.login') }}" @click="menuOpen = false">Staff login</a>
     </nav>
 </header>
 @if($informationUnavailable)<div class="service-notice container" role="status">Live venue information is temporarily unavailable. You can still explore the site.</div>@endif
