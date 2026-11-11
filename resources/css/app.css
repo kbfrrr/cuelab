@@ -287,6 +287,20 @@
 .cue-public-shell .chat-heading h2 { font-size: 1rem; font-weight: 600; letter-spacing: -.02em; }
 .cue-public-shell .chat-heading p { margin: 1px 0 0; color: #edccd2; font-size: .75rem; }
 
+.cuechat-reset {
+    flex-shrink: 0;
+    padding: 5px 10px;
+    border: 1px solid #ffffff4a;
+    border-radius: 20px;
+    background: transparent;
+    color: inherit;
+    font-size: .75rem;
+    font-weight: 600;
+}
+.cuechat-reset:hover:not(:disabled) { background: #ffffff18; }
+.cuechat-reset:disabled { opacity: .65; cursor: default; }
+.cuechat-reset:focus-visible { outline-color: #ffc0c7; outline-offset: 2px; }
+
 .cue-public-shell .cuechat-close {
     position: relative;
     width: 36px;

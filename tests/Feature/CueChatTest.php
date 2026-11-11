@@ -36,6 +36,62 @@ class CueChatTest extends TestCase
         Http::preventStrayRequests();
     }
 
+    public function test_chat_history_survives_navigation_and_new_chat_clears_only_chat_state(): void
+    {
+        $this->withSession([
+            'booking_reference' => 'existing-booking',
+            'cuechat.user' => 'previous-chat',
+            'cuechat.draft' => ['date_text' => 'tomorrow'],
+            'cuechat.selection' => ['token' => 'previous-quote'],
+            'cuechat.ambiguous_hour' => '7',
+        ]);
+
+        $this->postJson(route('cuechat.message'), ['message' => 'Check booking status'])->assertOk();
+        $this->get(route('rates'))->assertOk();
+        $this->getJson(route('cuechat.history'))->assertOk()
+            ->assertJsonPath('history.0.text', 'Check booking status')
+            ->assertJsonPath('history.1.actions.0.url', route('booking').'#booking-lookup');
+
+        $this->deleteJson(route('cuechat.reset'))->assertNoContent()
+            ->assertSessionMissing('cuechat')
+            ->assertSessionHas('booking_reference', 'existing-booking');
+        $this->getJson(route('cuechat.history'))->assertOk()->assertExactJson(['history' => []]);
+    }
+
+    public function test_chat_history_hides_private_references_and_contact_details(): void
+    {
+        Http::fake();
+        $reference = str_repeat('A1', 16);
+        $this->postJson(route('cuechat.message'), ['message' => $reference])->assertOk()
+            ->assertJsonPath('history.0.text', 'Private details hidden')
+            ->assertDontSee($reference);
+        $this->postJson(route('cuechat.message'), ['message' => 'My email is guest@example.test'])->assertOk();
+
+        $this->getJson(route('cuechat.history'))->assertOk()
+            ->assertJsonPath('history.0.text', 'Private details hidden')
+            ->assertJsonPath('history.2.text', 'Private details hidden')
+            ->assertDontSee($reference)
+            ->assertDontSee('guest@example.test');
+        Http::assertNothingSent();
+    }
+
+    public function test_chat_can_complete_a_guided_quote_without_dify(): void
+    {
+        Http::fake(['*' => Http::response([], 503)]);
+        $this->postJson(route('cuechat.message'), ['message' => 'Book a table'])->assertOk()
+            ->assertJsonPath('reply', 'What date would you like to play?');
+        $this->postJson(route('cuechat.message'), ['message' => 'Tomorrow. Is that available?'])->assertOk()
+            ->assertJsonPath('reply', 'What start time would you prefer?');
+        $this->postJson(route('cuechat.message'), ['message' => 'I would prefer 9 PM'])->assertOk()
+            ->assertJsonPath('reply', 'How long would you like to play?');
+        $this->postJson(route('cuechat.message'), ['message' => '1 hour'])->assertOk()
+            ->assertJsonPath('reply', 'Which table would you prefer? You can say “any.”');
+        $this->postJson(route('cuechat.message'), ['message' => 'Kahit ano'])->assertOk()
+            ->assertJsonPath('actions.0.label', 'Review booking request');
+
+        Http::assertNothingSent();
+    }
+
     public function test_chat_keeps_booking_details_corrects_ambiguous_time_and_prefills_the_form(): void
     {
         Http::fakeSequence('*/workflows/run')
@@ -93,7 +149,7 @@ class CueChatTest extends TestCase
     public function test_chat_reads_current_rates_and_uses_the_faq_for_venue_questions(): void
     {
         Http::fake([
-            '*/workflows/run' => Http::sequence()->push($this->intake('rates'))->push($this->intake('rates'))->push($this->intake('location'))->push($this->intake('location'))->push($this->intake('policy')),
+            '*/workflows/run' => Http::sequence()->push($this->intake('policy')),
             '*/chat-messages' => Http::sequence()->push(['answer' => 'CueLab is in front of Remedian Court.'])
                 ->push(['answer' => 'Demo fixture. The entrance is beside the main gate.'])
                 ->push(['answer' => 'The hourly rate is PHP 1000.']),
@@ -105,15 +161,42 @@ class CueChatTest extends TestCase
         $taglish = $this->postJson('/cuechat/message', ['message' => 'Magkano po per hour?'])->assertOk();
         $this->assertStringContainsString('PHP 225.00', $taglish->json('reply'));
         $this->assertStringNotContainsString('PHP 200.00', $taglish->json('reply'));
+        $this->postJson('/cuechat/message', ['message' => 'What are your opening hours?'])->assertOk()
+            ->assertJsonPath('reply', fn (string $reply): bool => str_contains($reply, 'Monday · 09:00–23:00'));
+        Http::assertNothingSent();
+
+        $this->postJson('/cuechat/message', ['message' => 'Do you accept GCash?'])->assertOk()
+            ->assertJsonPath('reply', 'Cue Lab accepts cash, GCash, and bank transfer for drinks and billiards.');
         $this->postJson('/cuechat/message', ['message' => 'Saan po kayo located?'])->assertOk()->assertJsonPath('reply', 'CueLab is in front of Remedian Court.');
         $this->postJson('/cuechat/message', ['message' => 'Saan po kayo located?'])->assertOk()->assertJsonPath('reply', 'Demo fixture. The entrance is beside the main gate.');
+        Http::assertSentCount(2);
+        Http::assertNotSent(fn ($request): bool => str_ends_with($request->url(), '/workflows/run'));
         $this->postJson('/cuechat/message', ['message' => 'Tell me about whole venue rentals'])->assertOk()->assertJsonPath('actions.0.url', route('contact'));
+    }
+
+    public function test_approved_amenity_questions_can_be_answered_without_dify(): void
+    {
+        Http::fake(['*' => Http::response([], 503)]);
+
+        foreach ([
+            'Where can I park?' => 'Yes, parking is available.',
+            'May parking po ba kayo?' => 'Yes, parking is available.',
+            'May Wi-Fi po ba kayo?' => 'Yes, Wi-Fi is available.',
+            'Do you have WiFi?' => 'Yes, Wi-Fi is available.',
+        ] as $message => $answer) {
+            $this->postJson(route('cuechat.message'), ['message' => $message])
+                ->assertOk()->assertJsonPath('reply', $answer);
+        }
+
+        Http::assertNothingSent();
     }
 
     public function test_status_and_private_details_stay_on_the_website(): void
     {
         Http::fake();
         $this->postJson('/cuechat/message', ['message' => 'Check booking status'])->assertOk()
+            ->assertJsonPath('actions.0.url', route('booking').'#booking-lookup');
+        $this->postJson('/cuechat/message', ['message' => 'Confirmed na ba ang booking ko?'])->assertOk()
             ->assertJsonPath('actions.0.url', route('booking').'#booking-lookup');
         $this->postJson('/cuechat/message', ['message' => 'My phone is 09171234567'])->assertOk()
             ->assertJsonPath('actions.0.url', route('booking'));
@@ -206,11 +289,19 @@ class CueChatTest extends TestCase
         $record = Reservation::sole();
         $this->assertSame('pending', $record->status);
         $this->assertEquals(now()->addHour(), $record->hold_expires_at);
+        $this->postJson(route('cuechat.message'), ['message' => 'Check booking status'])->assertOk()
+            ->assertJsonPath('reply', 'Awaiting approval.')
+            ->assertJsonPath('actions.0.url', route('booking.status'))
+            ->assertDontSee($record->reference);
         app(ReservationService::class)->transition($record, 'confirmed', User::factory()->create(['is_staff' => true]));
 
         $this->flushSession();
         $this->post('/booking/lookup', ['reference' => $record->reference])->assertRedirect(route('booking.status'));
         $this->get('/booking/status')->assertOk()->assertSee('You’re booked.')->assertDontSee('Demo Guest')->assertDontSee('09000000001');
+        $this->postJson(route('cuechat.message'), ['message' => 'Confirmed na ba ang booking ko?'])->assertOk()
+            ->assertJsonPath('reply', 'You’re booked.')
+            ->assertDontSee($record->reference);
+        Http::assertSentCount(1);
     }
 
     public static function bookingRequests(): array

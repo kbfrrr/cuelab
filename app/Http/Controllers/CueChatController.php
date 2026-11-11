@@ -6,26 +6,59 @@ use App\Models\OperatingHour;
 use App\Models\ServiceRate;
 use App\Services\BookingConversation;
 use App\Services\CueChatDify;
+use App\Services\ReservationService;
 use Illuminate\Database\QueryException;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
+use Illuminate\Http\Response;
 use Illuminate\Support\Str;
 
 class CueChatController extends Controller
 {
-    public function __construct(private CueChatDify $dify, private BookingConversation $booking) {}
+    private const HISTORY_LIMIT = 40;
+
+    public function __construct(
+        private CueChatDify $dify,
+        private BookingConversation $booking,
+        private ReservationService $reservations,
+    ) {}
 
     public function __invoke(Request $request): JsonResponse
     {
         $message = trim($request->validate(['message' => 'required|string|max:1000'])['message']);
 
+        $withoutDates = preg_replace('/\b(?:\d{4}-\d{1,2}-\d{1,2}|\d{1,2}\/\d{1,2}\/\d{2,4})\b/u', '', $message);
+        $private = preg_match('/@|\b[a-z0-9]{32}\b|(?<!\d)(?:\d[\s().+-]*){7,}/iu', $withoutDates);
+
         try {
-            $result = $this->respond($request, $message);
+            $result = $private
+                ? $this->reply('For privacy, enter contact details or a private reference on the booking page.', 'Open booking page', route('booking'))
+                : $this->respond($request, $message);
         } catch (QueryException) {
             $result = $this->referral('CueLab’s live information is temporarily unavailable. Please contact staff.', true);
         }
 
-        return response()->json($result);
+        $session = $request->session();
+        $history = array_slice([
+            ...$session->get('cuechat.history', []),
+            ['customer' => true, 'text' => $private ? 'Private details hidden' : $message, 'actions' => []],
+            ['customer' => false, 'text' => $result['reply'], 'actions' => $result['actions']],
+        ], -self::HISTORY_LIMIT);
+        $session->put('cuechat.history', $history);
+
+        return response()->json($result + ['history' => $history]);
+    }
+
+    public function history(Request $request): JsonResponse
+    {
+        return response()->json(['history' => $request->session()->get('cuechat.history', [])]);
+    }
+
+    public function reset(Request $request): Response
+    {
+        $request->session()->forget('cuechat');
+
+        return response()->noContent();
     }
 
     /** @return array{reply: string, actions: list<array{label: string, url: string}>} */
@@ -37,15 +70,12 @@ class CueChatController extends Controller
 
             return $this->booking->respond($session, []);
         }
-        if ($message === 'Check booking status') {
-            return $this->status();
+        if ($message === 'Check booking status'
+            || preg_match('/^(?:confirmed na ba (?:ang |yung )?(?:booking|reservation) ko|is my (?:booking|reservation) confirmed|check my booking(?: status)?|what is my booking status)[?!.]*$/iu', Str::squish($message))) {
+            return $this->status($request);
         }
         if ($message === 'Ask about CueLab') {
             return $this->reply('Ask me about rates, hours, or house rules.');
-        }
-        $withoutDates = preg_replace('/\b(?:\d{4}-\d{1,2}-\d{1,2}|\d{1,2}\/\d{1,2}\/\d{2,4})\b/u', '', $message);
-        if (preg_match('/@|\b[a-z0-9]{32}\b|(?<!\d)(?:\d[\s().+-]*){7,}/iu', $withoutDates)) {
-            return $this->reply('For privacy, enter contact details or a private reference on the booking page.', 'Open booking page', route('booking'));
         }
         if (preg_match('/\b(?:holds?|grace period|late arrival|15\s*(?:mins?|minutes?)\b)\b/iu', $message) &&
             preg_match('/\b(?:holds?|grace period|late arrival|late|policy|reserve|reservation)\b/iu', $message)) {
@@ -56,9 +86,37 @@ class CueChatController extends Controller
         if ($venuePolicy !== null) {
             return $venuePolicy;
         }
+        $question = Str::lower(Str::squish(rtrim($message, '?! .')));
+        if (($approvedAnswer = $this->approvedQuickAnswer($question)) !== null) {
+            return $this->reply($approvedAnswer);
+        }
+
+        if (in_array($question, [
+            'what is the hourly rate for billiards', 'what is your hourly rate for a billiards table',
+            'how much are the tables', 'magkano po per hour', 'magkano per hour',
+        ], true)) {
+            return $this->rates($message);
+        }
+        if (in_array($question, [
+            'what are your opening hours', 'what time do you open', 'what time do you close',
+            'anong oras po kayo bukas', 'anong oras po kayo nagbubukas',
+        ], true)) {
+            return $this->hours();
+        }
+
+        $bookingReply = $this->booking->answerPendingQuestion($session, $question);
+        if ($bookingReply !== null) {
+            return $bookingReply;
+        }
 
         $user = $session->get('cuechat.user') ?? (string) Str::uuid();
         $session->put('cuechat.user', $user);
+        if (in_array($question, [
+            'where are you located', 'where is cuelab located', 'saan po kayo located',
+        ], true)) {
+            return $this->faq($message, $user);
+        }
+
         $draft = $session->get('cuechat.draft', []);
         if ($session->has('cuechat.ambiguous_hour')) {
             $draft['start_time_text'] = $session->get('cuechat.ambiguous_hour');
@@ -70,7 +128,7 @@ class CueChatController extends Controller
 
         return match ($intake['intent']) {
             'reservation' => $this->booking->respond($session, $intake['details']),
-            'booking_status' => $this->status(),
+            'booking_status' => $this->status($request),
             'rates' => $this->rates($message),
             'hours' => $this->hours(),
             'equipment', 'location', 'policy' => $this->faq($message, $user),
@@ -145,6 +203,22 @@ class CueChatController extends Controller
         return $this->reply("Operating hours (Philippine time)\n".$schedule->implode("\n"));
     }
 
+    private function approvedQuickAnswer(string $question): ?string
+    {
+        $question = str_replace('wi-fi', 'wifi', $question);
+
+        // Approved venue FAQ entries 11, 14, and 15. Update these when the official FAQ changes.
+        return match ($question) {
+            'do you have parking', 'is parking available', 'may parking po ba kayo', 'may parking ba kayo',
+            'where can i park', 'saan puwedeng mag-park', 'may paradahan ba' => 'Yes, parking is available.',
+            'do you have wifi', 'is there wifi', 'is wifi available', 'may wifi po ba kayo', 'may wifi ba kayo',
+            'do you have internet for guests', 'may wifi ba sa venue', 'may internet po ba' => 'Yes, Wi-Fi is available.',
+            'do you accept gcash', 'tumatanggap po ba kayo ng gcash', 'what payment methods do you accept',
+            'can i pay using bank transfer', 'do you take cash' => 'Cue Lab accepts cash, GCash, and bank transfer for drinks and billiards.',
+            default => null,
+        };
+    }
+
     private function faq(string $message, string $user): array
     {
         $answer = $this->dify->faq($message, $user);
@@ -152,9 +226,14 @@ class CueChatController extends Controller
         return $answer === null ? $this->referral() : $this->reply($answer);
     }
 
-    private function status(): array
+    private function status(Request $request): array
     {
-        return $this->reply('Enter your private reference on the booking page to check your status.', 'Check booking status', route('booking').'#booking-lookup');
+        $record = $this->reservations->findForStatus($request->session()->get('booking_reference'));
+        if ($record !== null) {
+            return $this->reply($record->statusHeading(), 'View booking details', route('booking.status'));
+        }
+
+        return $this->reply('Use the private lookup form to open your booking first. Then ask me again for its status.', 'Check booking status', route('booking').'#booking-lookup');
     }
 
     private function referral(string $message = 'I can’t verify that here. Please contact CueLab staff.', bool $includeBooking = false): array

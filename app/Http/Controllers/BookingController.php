@@ -91,12 +91,11 @@ class BookingController extends Controller
 
     public function status(Request $request): View|RedirectResponse
     {
-        $this->reservations->expire();
-        $record = Reservation::with('billiardTable')->where('reference', $request->session()->get('booking_reference', ''))->first();
+        $record = $this->reservations->findForStatus($request->session()->get('booking_reference'));
         if (! $record) {
             return redirect()->route('booking');
         }
 
-        return view('pages.booking-status', compact('record'));
+        return view('pages.booking-status', ['record' => $record->load('billiardTable')]);
     }
 }

@@ -10,6 +10,8 @@ use Illuminate\Validation\ValidationException;
 
 class BookingConversation
 {
+    private const ANY_TABLE = ['any', 'any table', 'no preference', 'kahit ano', 'kahit anong table', 'kahit alin'];
+
     private const QUESTIONS = [
         'date_text' => 'What date would you like to play?',
         'start_time_text' => 'What start time would you prefer?',
@@ -18,6 +20,34 @@ class BookingConversation
     ];
 
     public function __construct(private ReservationService $reservations) {}
+
+    /** @return array{reply: string, actions: list<array{label: string, url: string}>}|null */
+    public function answerPendingQuestion(Session $session, string $question): ?array
+    {
+        $draft = $session->get('cuechat.draft');
+        if ($draft === null) {
+            return null;
+        }
+
+        $nextField = array_key_first(array_diff_key(self::QUESTIONS, $draft));
+        $value = match ($nextField) {
+            'date_text' => preg_replace('/[,.?!]+ (?:is (?:that|it) available|may available ba)$/u', '', $question),
+            'start_time_text' => preg_replace('/^(?:i would prefer|i prefer|at) /u', '', $question),
+            default => $question,
+        };
+
+        return match ($nextField) {
+            'date_text' => $this->date($value) === null
+                ? null : $this->respond($session, ['date_text' => $value]),
+            'start_time_text' => $session->get('cuechat.ambiguous_hour') !== null || $this->time($value, null) === null
+                ? null : $this->respond($session, ['start_time_text' => $value]),
+            'duration_text' => $this->duration($value) === null
+                ? null : $this->respond($session, ['duration_text' => $value]),
+            'table_text' => in_array($value, self::ANY_TABLE, true)
+                ? $this->respond($session, ['table_text' => $value]) : null,
+            default => null,
+        };
+    }
 
     /**
      * @param  array<string, string>  $details
@@ -194,7 +224,7 @@ class BookingConversation
     /** @param iterable<BilliardTable> $tables */
     private function tablePreference(string $value, iterable $tables): ?string
     {
-        if (in_array($value, ['any', 'any table', 'no preference', 'kahit ano', 'kahit anong table', 'kahit alin'], true)) {
+        if (in_array($value, self::ANY_TABLE, true)) {
             return 'any';
         }
 

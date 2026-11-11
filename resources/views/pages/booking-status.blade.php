@@ -1,15 +1,7 @@
 <x-layout title="Booking status">
     <section class="container page-heading">
         <span class="eyebrow">Your request</span>
-        <h1>{{ match ($record->status) {
-            'pending' => 'Awaiting approval.',
-            'confirmed' => 'You’re booked.',
-            'expired' => 'Your hold expired.',
-            'rejected' => 'Request declined.',
-            'cancelled' => 'Booking cancelled.',
-            'no_show' => 'Your table was released.',
-            default => 'Booking status.',
-        } }}</h1>
+        <h1>{{ $record->statusHeading() }}</h1>
         <p>Refresh this page for the latest booking status.</p>
     </section>
 

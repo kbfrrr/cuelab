@@ -18,6 +18,17 @@ use Illuminate\Validation\ValidationException;
 
 class ReservationService
 {
+    public function findForStatus(?string $reference): ?Reservation
+    {
+        if ($reference === null || $reference === '') {
+            return null;
+        }
+
+        $this->expire();
+
+        return Reservation::where('reference', $reference)->first();
+    }
+
     public function enabled(): bool
     {
         return BusinessSetting::where('key', 'booking_enabled')->where('is_verified', true)->first()?->value === true

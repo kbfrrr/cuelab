@@ -1,5 +1,5 @@
-<div x-data="cueChat" data-message-url="{{ route('cuechat.message') }}"
-    data-booking-url="{{ route('booking') }}" data-contact-url="{{ route('contact') }}">
+<div x-data="cueChat" data-message-url="{{ route('cuechat.message') }}" data-history-url="{{ route('cuechat.history') }}"
+    @pageshow.window="if ($event.persisted && open) refreshHistory()">
     <button type="button" class="chat-toggle" x-ref="toggle" @click="openChat"
         aria-haspopup="dialog" aria-controls="cuechat-panel" :aria-expanded="open">
         <span class="cuechat-ball" aria-hidden="true"><span>8</span></span>
@@ -12,10 +12,11 @@
                 <h2 id="cuechat-title">CueChat</h2>
                 <p>CueLab’s AI assistant</p>
             </div>
+            <button type="button" class="cuechat-reset" @click="resetChat" :disabled="!!busy">New chat</button>
             <button type="button" class="icon-button cuechat-close" @click="$refs.panel.close()" aria-label="Close CueChat" autofocus></button>
         </div>
         <div class="cuechat-body" x-ref="history">
-            <section class="cuechat-welcome" x-show="!history.length">
+            <section class="cuechat-welcome" x-show="!history.length && !busy">
                 <img src="{{ asset('cuelab-break.svg') }}" width="800" height="600" alt="">
                 <div class="cuechat-welcome-copy">
                     <h3>Plan your next game.</h3>
@@ -33,11 +34,16 @@
                     </div>
                 </template>
             </div>
-            <p class="cuechat-progress" role="status" x-show="busy">Checking your request…</p>
+            <p class="cuechat-progress" role="status" x-show="busy" x-text="busy"></p>
+            <div class="cuechat-turn" role="status" x-show="notice">
+                <p x-text="notice"></p>
+                <a class="text-link" href="{{ route('booking') }}">Open booking page</a>
+                <a class="text-link" href="{{ route('contact') }}">Contact CueLab</a>
+            </div>
         </div>
         <div class="cuechat-options">
             <template x-for="option in options" :key="option">
-                <button type="button" @click="send(option)" :disabled="busy" x-text="option"></button>
+                <button type="button" @click="send(option)" :disabled="!!busy" x-text="option"></button>
             </template>
         </div>
         <div class="cuechat-footer">
@@ -45,7 +51,7 @@
                 @csrf
                 <input x-ref="message" x-model="message" maxlength="1000" aria-label="Message"
                     autocomplete="off" placeholder="Ask CueChat…">
-                <button type="submit" class="cuechat-send" :disabled="busy || !message.trim()">Send</button>
+                <button type="submit" class="cuechat-send" :disabled="!!busy || !message.trim()">Send</button>
             </form>
             <p>Use the booking page for contact details and private codes.
                 <a class="chat-privacy" href="{{ route('privacy') }}">Privacy</a>

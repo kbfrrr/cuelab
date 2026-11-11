@@ -42,6 +42,19 @@ class Reservation extends Model
             ->whereRaw(self::EFFECTIVE_END.' > ?', [$from]);
     }
 
+    public function statusHeading(): string
+    {
+        return match ($this->status) {
+            'pending' => 'Awaiting approval.',
+            'confirmed' => 'You’re booked.',
+            'expired' => 'Your hold expired.',
+            'rejected' => 'Request declined.',
+            'cancelled' => 'Booking cancelled.',
+            'no_show' => 'Your table was released.',
+            default => 'Booking status.',
+        };
+    }
+
     public function effectiveStart(): CarbonImmutable
     {
         return $this->session_starts_at ?? $this->starts_at;
