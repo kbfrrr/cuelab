@@ -21,18 +21,20 @@
 @endphp
 
 <x-layout :information-unavailable="$informationUnavailable" title="Billiards in Angeles" :visit-url="$visitUrl" :visit-label="$visitLabel">
-    <section class="container cue-home-hero" aria-labelledby="cue-home-title">
-        <div class="cue-intro">
-            <p class="cue-kicker"><span></span> CueLab Billiards <span class="cue-kicker-divider"></span> Angeles, Pampanga</p>
-            <h1 id="cue-home-title">Rack ’em.<br><span>Stay awhile.</span></h1>
-            <p class="cue-intro-copy">An evening at the table, a few good games, and a reason to get together.</p>
-            <div class="cue-hero-actions">
-                <a class="button cue-primary" href="{{ $visitUrl }}">{{ $visitLabel }} <x-heroicon-o-arrow-up-right aria-hidden="true" /></a>
-                <a class="cue-text-link" href="{{ route('rates') }}">Rates & hours <x-heroicon-o-arrow-right aria-hidden="true" /></a>
+    <section class="cue-home-hero" aria-labelledby="cue-home-title">
+        <div class="container cue-hero-content">
+            <div class="cue-intro">
+                <p class="cue-kicker"><span></span> CueLab Billiards <span class="cue-kicker-divider"></span> Angeles, Pampanga</p>
+                <h1 id="cue-home-title">Rack ’em.<br><span>Stay awhile.</span></h1>
+                <p class="cue-intro-copy">An evening at the table, a few good games, and a reason to get together.</p>
+                <div class="cue-hero-actions">
+                    <a class="button cue-primary" href="{{ $visitUrl }}">{{ $visitLabel }} <x-heroicon-o-arrow-up-right aria-hidden="true" /></a>
+                    <a class="cue-text-link" href="{{ route('rates') }}">Rates & hours <x-heroicon-o-arrow-right aria-hidden="true" /></a>
+                </div>
+                @if($bookingReady)
+                    <p class="cue-booking-note">Choose a time and send a request for staff approval.</p>
+                @endif
             </div>
-            @if($bookingReady)
-                <p class="cue-booking-note">Choose a time and send a request for staff approval.</p>
-            @endif
         </div>
         <figure class="cue-break-art cue-carousel" x-data="heroCarousel({{ count($heroSlides) }})" aria-roledescription="carousel" aria-label="Photos of The Cue Lab Billiards"
             @mouseenter="pause()" @mouseleave="resume()" @focusin="pause()" @focusout="resume()"
