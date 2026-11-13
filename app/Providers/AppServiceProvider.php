@@ -40,6 +40,10 @@ class AppServiceProvider extends ServiceProvider
         foreach (['lookup', 'register'] as $endpoint) {
             RateLimiter::for('tournament-'.$endpoint, fn (Request $request) => Limit::perMinute(10)->by($request->ip()));
         }
+        RateLimiter::for('tournament-proof', fn (Request $request) => [
+            Limit::perMinute(5)->by('ip:'.$request->ip()),
+            Limit::perHour(10)->by('session:'.$request->session()->getId()),
+        ]);
         foreach ([Tournament::class, TournamentRegistration::class, BusinessSetting::class, OperatingHour::class, ServiceRate::class, BilliardTable::class, Reservation::class, AvailabilityBlock::class] as $model) {
             $model::observe(StaffAuditObserver::class);
         }

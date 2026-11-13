@@ -19,6 +19,7 @@ fi
 
 php artisan migrate --force --no-interaction
 php artisan db:seed --class=BusinessSettingsSeeder --force --no-interaction
+php artisan tournaments:purge-proof-images --no-interaction
 
 if [ -n "${CUELAB_HOSTED_DEMO_PASSWORD:-}" ]; then
     php artisan db:seed --class=CueLabDemoSeeder --force --no-interaction
@@ -29,4 +30,5 @@ if [ "${PORT:-80}" != 80 ]; then
     sed -i "s/<VirtualHost \*:80>/<VirtualHost *:$PORT>/" /etc/apache2/sites-available/000-default.conf
 fi
 
+php artisan schedule:work --no-interaction &
 exec apache2-foreground

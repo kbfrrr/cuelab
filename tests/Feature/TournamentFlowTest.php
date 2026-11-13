@@ -2,7 +2,9 @@
 
 namespace Tests\Feature;
 
+use App\Models\BusinessSetting;
 use App\Models\Tournament;
+use App\Models\TournamentRegistration;
 use App\Models\User;
 use App\Services\TournamentService;
 use Illuminate\Foundation\Testing\RefreshDatabase;
@@ -21,6 +23,9 @@ class TournamentFlowTest extends TestCase
 
     private function event(): Tournament
     {
+        BusinessSetting::where('key', 'gcash_recipient_name')->firstOrFail()->update(['value' => 'Test CueLab', 'is_verified' => true]);
+        BusinessSetting::where('key', 'gcash_recipient_number')->firstOrFail()->update(['value' => '09170000000', 'is_verified' => true]);
+
         return Tournament::factory()->create(['status' => 'published', 'registration_deadline' => now()->addDays(2), 'entry_fee_minor' => 5000, 'capacity' => 1]);
     }
 
@@ -55,12 +60,14 @@ class TournamentFlowTest extends TestCase
     public function test_payment_and_cancellation_preserve_payment_history(): void
     {
         $service = app(TournamentService::class);
-        $record = $service->register($this->event(), $this->data());
+        $record = TournamentRegistration::factory()->for($this->event())->create([
+            'status' => 'paid', 'payment_method' => 'cash', 'paid_at' => now(), 'quoted_fee_minor' => 5000,
+        ]);
         $staff = User::factory()->create(['is_staff' => true]);
         $this->actingAs($staff);
-        $service->updateRegistration($record, 'paid', $staff, ['payment_method' => 'cash']);
-        $this->assertSame('paid', $record->fresh()->status);
-        $service->updateRegistration($record, 'cancelled', $staff);
+        $service->cancelRegistration($record, $staff);
+        $this->assertSame('cancelled', $record->fresh()->status);
+        $this->assertSame('cash', $record->fresh()->payment_method);
         $this->assertNotNull($record->fresh()->paid_at);
         $this->assertDatabaseHas('staff_actions', ['action' => 'tournament_registrations.updated']);
     }
@@ -91,6 +98,6 @@ class TournamentFlowTest extends TestCase
         $this->get(route('tournament.show', $event))->assertNotFound();
         $event->update(['status' => 'published', 'registration_deadline' => now()->subMinute()]);
         $this->expectException(ValidationException::class);
-        app(TournamentService::class)->register($event,$this->data());
+        app(TournamentService::class)->register($event, $this->data());
     }
 }

@@ -4,6 +4,7 @@ use App\Http\Controllers\BookingController;
 use App\Http\Controllers\CueChatController;
 use App\Http\Controllers\PublicPageController;
 use App\Http\Controllers\TournamentController;
+use App\Http\Controllers\TournamentPaymentProofController;
 use App\Http\Middleware\PrivateBookingResponse;
 use Illuminate\Support\Facades\Route;
 
@@ -25,7 +26,12 @@ Route::middleware(PrivateBookingResponse::class)->group(function (): void {
 
 Route::middleware(PrivateBookingResponse::class)->group(function (): void {
     Route::get('/tournaments/registration/status', [TournamentController::class, 'status'])->name('tournament.status');
+    Route::post('/tournaments/registration/payment-proof', [TournamentPaymentProofController::class, 'store'])
+        ->middleware('throttle:tournament-proof')->name('tournament.proof.store');
     Route::post('/tournaments/registration/lookup', [TournamentController::class, 'lookup'])->middleware('throttle:tournament-lookup')->name('tournament.lookup');
     Route::get('/tournaments/{tournament}', [TournamentController::class, 'show'])->name('tournament.show');
     Route::post('/tournaments/{tournament}/register', [TournamentController::class, 'register'])->middleware('throttle:tournament-register')->name('tournament.register');
 });
+
+Route::get('/admin/tournament-payment-proofs/{registration}/{version}', [TournamentPaymentProofController::class, 'show'])
+    ->whereNumber('registration')->whereUuid('version')->middleware(PrivateBookingResponse::class)->name('tournament.proof.show');

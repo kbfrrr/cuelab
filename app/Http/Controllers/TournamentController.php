@@ -4,6 +4,7 @@ namespace App\Http\Controllers;
 
 use App\Models\Tournament;
 use App\Models\TournamentRegistration;
+use App\Services\TournamentPaymentProofService;
 use App\Services\TournamentService;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
@@ -12,13 +13,15 @@ use Illuminate\View\View;
 
 class TournamentController extends Controller
 {
-    public function show(Tournament $tournament, Request $request): View
+    public function show(Tournament $tournament, Request $request, TournamentPaymentProofService $paymentProofs): View
     {
         abort_if($tournament->status === 'draft', 404);
         $key = (string) Str::uuid();
         $request->session()->put('tournament_draft', ['id' => $tournament->id, 'key' => $key, 'fee' => $tournament->entry_fee_minor]);
 
-        return view('pages.tournament', compact('tournament', 'key'));
+        $canAcceptPayment = $tournament->entry_fee_minor === 0 || $paymentProofs->recipient() !== null;
+
+        return view('pages.tournament', compact('tournament', 'key', 'canAcceptPayment'));
     }
 
     public function register(Tournament $tournament, Request $request, TournamentService $service): RedirectResponse
@@ -43,10 +46,18 @@ class TournamentController extends Controller
         return redirect()->route('tournament.status');
     }
 
-    public function status(Request $request): View|RedirectResponse
+    public function status(Request $request, TournamentPaymentProofService $paymentProofs): View|RedirectResponse
     {
         $record = TournamentRegistration::with('tournament')->where('reference', $request->session()->get('tournament_reference', ''))->first();
 
-        return $record ? view('pages.tournament-status', compact('record')) : redirect()->route('tournaments');
+        if (! $record) {
+            return redirect()->route('tournaments');
+        }
+
+        $proof = $paymentProofs->currentProof($record);
+        $canSubmit = $paymentProofs->canSubmit($record, $proof);
+        $recipient = $canSubmit ? $paymentProofs->recipient() : null;
+
+        return view('pages.tournament-status', compact('record', 'proof', 'canSubmit', 'recipient'));
     }
 }

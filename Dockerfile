@@ -9,6 +9,7 @@ RUN apt-get update \
     && sed -ri "s!/var/www/html!${APACHE_DOCUMENT_ROOT}!g" /etc/apache2/sites-available/*.conf \
     && printf '<Directory /var/www/html/public>\n    AllowOverride All\n    Options -Indexes\n</Directory>\n' > /etc/apache2/conf-available/cuelab.conf \
     && a2enconf cuelab \
+    && printf 'upload_max_filesize=2M\npost_max_size=4M\n' > "${PHP_INI_DIR}/conf.d/cuelab-uploads.ini" \
     && rm -rf /var/lib/apt/lists/*
 
 COPY --from=composer:2 /usr/bin/composer /usr/local/bin/composer

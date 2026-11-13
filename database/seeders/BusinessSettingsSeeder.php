@@ -5,13 +5,18 @@ namespace Database\Seeders;
 use App\Models\BusinessSetting;
 use App\Models\OperatingHour;
 use App\Models\ServiceRate;
+use App\Services\TournamentPaymentProofService;
 use Illuminate\Database\Seeder;
 
 class BusinessSettingsSeeder extends Seeder
 {
     public function run(): void
     {
-        foreach (['booking_enabled' => false, 'hold_minutes' => 60, 'address' => null, 'phone' => null, 'social_url' => null, 'house_rules' => null] as $key => $value) {
+        foreach ([
+            'booking_enabled' => false, 'hold_minutes' => 60, 'address' => null, 'phone' => null, 'social_url' => null, 'house_rules' => null,
+            TournamentPaymentProofService::RECIPIENT_NAME => null,
+            TournamentPaymentProofService::RECIPIENT_NUMBER => null,
+        ] as $key => $value) {
             BusinessSetting::firstOrCreate(['key' => $key], ['value' => $value, 'is_verified' => in_array($key, ['booking_enabled', 'hold_minutes'])]);
         }
         ServiceRate::firstOrCreate(['name' => 'Table rental'], ['amount_minor' => 20000, 'description' => 'Hourly rental for any billiard table.', 'is_verified' => false]);

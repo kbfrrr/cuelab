@@ -14,6 +14,8 @@ use Illuminate\Validation\ValidationException;
 
 class TournamentService
 {
+    public function __construct(private TournamentPaymentProofService $paymentProofs) {}
+
     public function register(Tournament $event, array $data): TournamentRegistration
     {
         $data = Validator::make($data, ['full_name' => 'required|string|max:150', 'phone' => ['required', 'regex:/^\+?[0-9 ()-]{7,32}$/'], 'submission_key' => 'required|uuid', 'quoted_fee_minor' => 'required|integer|min:0'])->validate();
@@ -23,7 +25,7 @@ class TournamentService
         }
 
         return DB::transaction(function () use ($event, $data) {
-            $event = Tournament::findOrFail($event->id);
+            $event = Tournament::query()->lockForUpdate()->findOrFail($event->id);
             $existing = TournamentRegistration::where('submission_key', $data['submission_key'])->first();
             if ($existing) {
                 if ($existing->tournament_id !== $event->id || $existing->phone !== $data['phone'] || $existing->full_name !== $data['full_name']) {
@@ -37,6 +39,9 @@ class TournamentService
             }
             if ($event->entry_fee_minor !== (int) $data['quoted_fee_minor']) {
                 $this->fail('The entry fee changed. Refresh and review the new fee.');
+            }
+            if ($event->entry_fee_minor > 0 && $this->paymentProofs->recipient() === null) {
+                $this->fail('GCash payment details are unavailable. Contact CueLab staff for help.');
             }
             if ($event->registrations()->where('status', '!=', 'cancelled')->where('phone', $data['phone'])->exists()) {
                 $this->fail('This phone number is already registered. Contact staff for help.');
@@ -82,25 +87,15 @@ class TournamentService
         }, 3);
     }
 
-    public function updateRegistration(TournamentRegistration $registration, string $action, User $staff, array $payment = []): void
+    public function cancelRegistration(TournamentRegistration $registration, User $staff): void
     {
         abort_unless($staff->is_staff, 403);
-        DB::transaction(function () use ($registration, $action, $staff, $payment) {
-            $registration = TournamentRegistration::findOrFail($registration->id);
+        DB::transaction(function () use ($registration): void {
+            $registration = TournamentRegistration::query()->lockForUpdate()->findOrFail($registration->id);
             if ($registration->status === 'cancelled') {
                 $this->fail('Registration already cancelled.');
             }
-            if ($action === 'paid') {
-                if ($registration->status !== 'unpaid' || $registration->tournament->status === 'cancelled') {
-                    $this->fail('This payment cannot be recorded.');
-                }
-                $payment = Validator::make($payment, ['payment_method' => 'required|in:cash,gcash', 'payment_reference' => 'nullable|string|max:150|required_if:payment_method,gcash'])->validate();
-                $registration->update([...$payment, 'status' => 'paid', 'paid_at' => now(), 'payment_verified_by' => $staff->id]);
-            } elseif ($action === 'cancelled') {
-                $registration->update(['status' => 'cancelled']);
-            } else {
-                $this->fail('Unsupported action.');
-            }
+            $registration->update(['status' => 'cancelled']);
         }, 3);
     }
 

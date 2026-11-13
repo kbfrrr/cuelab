@@ -25,7 +25,7 @@ class CueLabDemoSeeder extends Seeder
 
     public const STAFF_EMAIL = 'demo.staff@example.test';
 
-    public const PASSWORD = 'CueLabDemo2026!';
+    public const PASSWORD = 'password';
 
     public function run(): void
     {

@@ -4,6 +4,7 @@ namespace App\Filament\Resources\BusinessSettings;
 
 use App\Filament\Resources\BusinessSettings\Pages\ManageBusinessSettings;
 use App\Models\BusinessSetting;
+use App\Services\TournamentPaymentProofService;
 use Filament\Actions\EditAction;
 use Filament\Forms\Components\TextInput;
 use Filament\Forms\Components\Toggle;
@@ -46,8 +47,16 @@ class BusinessSettingResource extends Resource
 
     public static function form(Schema $schema): Schema
     {
-        return $schema->components([TextInput::make('key')->disabled()->dehydrated(false), TextInput::make('value')->label('Value')->helperText('booking_enabled: true/false. hold_minutes: 1–1440. Other settings: text.')->formatStateUsing(fn ($state) => is_bool($state) ? ($state ? 'true' : 'false') : $state)->rules(fn ($record) => match ($record?->key) {
-            'booking_enabled' => ['required', 'in:true,false'], 'hold_minutes' => ['required', 'integer', 'min:1', 'max:1440'], default => ['nullable', 'string', 'max:2000']
+        return $schema->components([TextInput::make('key')->disabled()->dehydrated(false), TextInput::make('value')->label('Value')->helperText(fn ($record) => match ($record?->key) {
+            TournamentPaymentProofService::RECIPIENT_NAME => 'Enter the name shown on CueLab’s GCash account.',
+            TournamentPaymentProofService::RECIPIENT_NUMBER => 'Enter the GCash mobile number in 09XXXXXXXXX or +639XXXXXXXXX format.',
+            default => 'booking_enabled: true/false. hold_minutes: 1–1440. Other settings: text.',
+        })->formatStateUsing(fn ($state) => is_bool($state) ? ($state ? 'true' : 'false') : $state)->rules(fn ($record) => match ($record?->key) {
+            'booking_enabled' => ['required', 'in:true,false'],
+            'hold_minutes' => ['required', 'integer', 'min:1', 'max:1440'],
+            TournamentPaymentProofService::RECIPIENT_NAME => ['nullable', 'string', 'max:150'],
+            TournamentPaymentProofService::RECIPIENT_NUMBER => ['nullable', 'regex:'.TournamentPaymentProofService::MOBILE_PATTERN],
+            default => ['nullable', 'string', 'max:2000'],
         })->dehydrateStateUsing(fn ($state, $record) => match ($record?->key) {
             'booking_enabled' => $state === 'true', 'hold_minutes' => (int) $state, default => $state
         }), Toggle::make('is_verified')->label('Verified by venue')]);
