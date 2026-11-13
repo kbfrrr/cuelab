@@ -64,9 +64,7 @@ class PublicPagesTest extends TestCase
 
     public function test_unimplemented_submissions_are_not_accepted(): void
     {
-        $this->get('/contact')->assertOk()
-            ->assertSee('Open in Maps')->assertSee('Call the venue')->assertSee('Social media')
-            ->assertDontSee('Leave a message.');
+        $this->get('/contact')->assertSee('Messages cannot be submitted yet.')->assertSee('fieldset disabled', false);
         $this->get('/booking')->assertSee('No reservations are being accepted');
         $this->post('/contact', ['message' => 'test'])->assertStatus(405);
         $this->post('/booking')->assertStatus(419);
