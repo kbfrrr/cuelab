@@ -2,6 +2,7 @@
 
 namespace App\Http\Controllers;
 
+use App\Models\BusinessSetting;
 use App\Models\OperatingHour;
 use App\Models\ServiceRate;
 use App\Models\Tournament;
@@ -66,11 +67,6 @@ class CueChatController extends Controller
     private function respond(Request $request, string $message): array
     {
         $session = $request->session();
-        if ($message === 'Book a table') {
-            $session->forget(['cuechat.draft', 'cuechat.selection', 'cuechat.ambiguous_hour']);
-
-            return $this->booking->respond($session, []);
-        }
         if ($message === 'Check booking status'
             || preg_match('/^(?:confirmed na ba (?:ang |yung )?(?:booking|reservation) ko|is my (?:booking|reservation) confirmed|check my booking(?: status)?|what is my booking status)[?!.]*$/iu', Str::squish($message))) {
             return $this->status($request);
@@ -101,17 +97,30 @@ class CueChatController extends Controller
         if (in_array($question, [
             'what is the hourly rate for billiards', 'what is your hourly rate for a billiards table',
             'how much are the tables', 'magkano po per hour', 'magkano per hour',
+            'how much is a table per hour', 'what are your table rates', 'what are your rates',
+            'magkano ang hourly rate', 'magkano po ang hourly rate', 'magkano ang billiards per hour',
         ], true)) {
             return $this->rates($message);
         }
         if (in_array($question, [
             'what are your opening hours', 'what time do you open', 'what time do you close',
             'anong oras po kayo bukas', 'anong oras po kayo nagbubukas',
+            'what are your business hours', 'what are your hours', 'what is your weekly schedule',
+            'anong oras kayo nagbubukas', 'anong oras kayo nagsasara', 'ano po ang operating hours ninyo',
         ], true)) {
             return $this->hours();
         }
 
-        $bookingReply = $this->booking->answerStructuredRequest($session, $question)
+        if (in_array($question, [
+            'where are you located', 'where is cuelab located', 'saan po kayo located',
+            'what is your address', 'what is your full street address', 'where is cuelab',
+            'saan kayo located', 'saan kayo', 'saan po kayo', 'saan ang cuelab', 'ano po ang address ninyo',
+        ], true)) {
+            return $this->address();
+        }
+
+        $bookingReply = $this->booking->answerBookingStart($session, $question)
+            ?? $this->booking->answerStructuredRequest($session, $question)
             ?? $this->booking->answerPendingQuestion($session, $question);
         if ($bookingReply !== null) {
             return $bookingReply;
@@ -119,19 +128,14 @@ class CueChatController extends Controller
 
         $user = $session->get('cuechat.user') ?? (string) Str::uuid();
         $session->put('cuechat.user', $user);
-        if (in_array($question, [
-            'where are you located', 'where is cuelab located', 'saan po kayo located',
-        ], true)) {
-            return $this->faq($message, $user);
-        }
-
         $draft = $session->get('cuechat.draft', []);
         if ($session->has('cuechat.ambiguous_hour')) {
             $draft['start_time_text'] = $session->get('cuechat.ambiguous_hour');
         }
-        $intake = $this->dify->classify($message, $user, $draft);
+        $turn = $this->dify->startTurn();
+        $intake = $this->dify->classify($message, $user, $draft, $turn);
         if ($intake === null) {
-            return $this->referral(includeBooking: true);
+            return $this->booking->resumePendingQuestion($session) ?? $this->referral(includeBooking: true);
         }
 
         return match ($intake['intent']) {
@@ -139,9 +143,10 @@ class CueChatController extends Controller
             'booking_status' => $this->status($request),
             'rates' => $this->rates($message),
             'hours' => $this->hours(),
-            'equipment', 'location', 'policy' => $this->faq($message, $user),
-            'clarify' => $this->reply('Are you asking about a new reservation, an existing booking, or the venue?'),
-            default => $this->referral(),
+            'equipment', 'location', 'policy' => $this->difyReply($this->dify->faq($message, $user, $turn)),
+            'clarify' => $this->booking->resumePendingQuestion($session)
+                ?? $this->reply('Are you asking about a new reservation, an existing booking, or the venue?'),
+            default => $this->booking->resumePendingQuestion($session) ?? $this->referral(),
         };
     }
 
@@ -184,7 +189,7 @@ class CueChatController extends Controller
         $rates = ServiceRate::where('is_verified', true)->where('is_active', true)->where('unit', 'table/hour')
             ->where('currency', 'PHP')->orderBy('name')->get(['name', 'amount_minor']);
         if ($rates->isEmpty()) {
-            return $this->referral();
+            return $this->reply('Verified table rates are unavailable. Check the rates page or ask CueLab staff.', 'View rates', route('rates'));
         }
 
         return $this->reply($rates->map(fn (ServiceRate $rate): string => $rate->name.' · PHP '.number_format($rate->amount_minor / 100, 2).' per hour')->implode("\n"));
@@ -206,7 +211,7 @@ class CueChatController extends Controller
     {
         $hours = OperatingHour::where('is_verified', true)->whereBetween('day_of_week', [0, 6])->orderBy('day_of_week')->get();
         if ($hours->count() !== 7 || $hours->contains(fn (OperatingHour $hour): bool => ! $hour->is_closed && (! $hour->opens_at || ! $hour->closes_at))) {
-            return $this->referral();
+            return $this->reply('The verified weekly schedule is incomplete. Check the hours page or ask CueLab staff.', 'View hours', route('rates').'#hours');
         }
 
         $days = ['Sunday', 'Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday'];
@@ -239,11 +244,22 @@ class CueChatController extends Controller
         };
     }
 
-    private function faq(string $message, string $user): array
+    private function address(): array
     {
-        $answer = $this->dify->faq($message, $user);
+        $address = BusinessSetting::where('key', 'address')->where('is_verified', true)->first()?->value;
 
-        return $answer === null ? $this->referral() : $this->reply($answer);
+        return is_string($address) && trim($address) !== ''
+            ? $this->reply(trim($address), 'View contact page', route('contact'))
+            : $this->referral('I can’t verify CueLab’s address here. Please contact CueLab staff.');
+    }
+
+    private function difyReply(?string $answer): array
+    {
+        return match ($answer) {
+            null => $this->referral(includeBooking: true),
+            '' => $this->referral(),
+            default => $this->reply($answer),
+        };
     }
 
     private function status(Request $request): array

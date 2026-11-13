@@ -24,6 +24,30 @@ class BookingConversation
     public function __construct(private ReservationService $reservations) {}
 
     /** @return array{reply: string, actions: list<array{label: string, url: string}>}|null */
+    public function answerBookingStart(Session $session, string $question): ?array
+    {
+        if (in_array($question, [
+            'book a table', 'can i book a table', 'can i reserve a table', 'how do i book a table',
+            'i want to book a table', 'i want to reserve a table', 'i would like to book a table',
+            'i would like to reserve a table', 'i need to book a table', 'reserve a table',
+        ], true) || preg_match('/^(?:p[uw]w?ede (?:po )?ba(?:ng)?|gusto ko(?:ng)?|paano(?: po)?) (?:mag[- ]?(?:pa[- ]?)?(?:book|reserve)) (?:ng )?(?:isang )?table(?: po)?$/uD', $question)) {
+            $session->forget(['cuechat.draft', 'cuechat.selection', 'cuechat.ambiguous_hour']);
+
+            return $this->respond($session, []);
+        }
+
+        if (preg_match('/^may (?:available )?(?:(?:po )?bang )?table (?:po )?(?:ba )?(?:sa )?(ngayon|bukas|makalawa)(?: po)?$/D', $question, $parts)) {
+            return $this->respond($session, ['date_text' => $parts[1]]);
+        }
+
+        if (preg_match('/^(?:can i |i want to |i would like to )?(?:book|reserve) a table (?:for )?(today|tomorrow|the day after tomorrow|day after tomorrow)$/D', $question, $parts)) {
+            return $this->respond($session, ['date_text' => str_replace('the day after tomorrow', 'day after tomorrow', $parts[1])]);
+        }
+
+        return null;
+    }
+
+    /** @return array{reply: string, actions: list<array{label: string, url: string}>}|null */
     public function answerStructuredRequest(Session $session, string $question): ?array
     {
         if (! preg_match('/^may table ba (?:sa )?(?<date>.+?) ng (?<time>\d{1,2}(?::\d{2})?\s*(?:am|pm)),\s*(?<duration>[^,]+),\s*(?<table>[^,]+)$/u', $question, $parts)
@@ -51,6 +75,18 @@ class BookingConversation
         }
 
         $nextField = array_key_first(array_diff_key(self::QUESTIONS, $draft));
+        if ($nextField === 'start_time_text'
+            && preg_match('/^(?<time>.+?) (?:for|para sa) (?<duration>[^,]+)(?:,\s*(?<table>.+))?$/D', $question, $parts)
+            && $this->time($parts['time'], $session->get('cuechat.ambiguous_hour')) !== null
+            && $this->duration($parts['duration']) !== null
+            && (! isset($parts['table']) || in_array($parts['table'], self::ANY_TABLE, true))) {
+            return $this->respond($session, [
+                'start_time_text' => $parts['time'],
+                'duration_text' => $parts['duration'],
+                ...isset($parts['table']) ? ['table_text' => $parts['table']] : [],
+            ]);
+        }
+
         $value = match ($nextField) {
             'date_text' => preg_replace('/[,.?!]+ (?:is (?:that|it) available|may available ba)$/u', '', $question),
             'start_time_text' => preg_replace('/^(?:i would prefer|i prefer|at) /u', '', $question),
@@ -64,10 +100,25 @@ class BookingConversation
                 ? $this->respond($session, ['start_time_text' => $value]) : null,
             'duration_text' => $this->duration($value) === null
                 ? null : $this->respond($session, ['duration_text' => $value]),
-            'table_text' => in_array($value, self::ANY_TABLE, true)
+            'table_text' => $this->tablePreference($value, BilliardTable::where('is_active', true)->get(['name', 'type'])) !== null
                 ? $this->respond($session, ['table_text' => $value]) : null,
             default => null,
         };
+    }
+
+    /** @return array{reply: string, actions: list<array{label: string, url: string}>}|null */
+    public function resumePendingQuestion(Session $session): ?array
+    {
+        $draft = $session->get('cuechat.draft');
+        $field = $draft === null ? null : array_key_first(array_diff_key(self::QUESTIONS, $draft));
+        if ($field === null) {
+            return null;
+        }
+
+        $question = $field === 'start_time_text' && $session->has('cuechat.ambiguous_hour')
+            ? 'Do you mean AM or PM?' : self::QUESTIONS[$field];
+
+        return $this->reply('Let’s continue your booking. '.$question, 'Open booking page', route('booking'));
     }
 
     /**

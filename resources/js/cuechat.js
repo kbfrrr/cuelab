@@ -24,7 +24,7 @@ export default () => ({
         this.notice = '';
         try {
             const response = await this.request(this.$root.dataset.historyUrl);
-            this.history = (await response.json()).history;
+            await this.readHistory(response);
         } catch {
             this.notice = 'CueChat couldn’t load your previous messages. Close and reopen the chat to try again.';
         } finally {
@@ -42,8 +42,10 @@ export default () => ({
             this.history = [];
             this.message = '';
             if (this.open) this.$refs.message.focus();
-        } catch {
-            this.notice = 'CueChat couldn’t start a new chat. Please try again.';
+        } catch (error) {
+            this.notice = error.message === 'expired-session'
+                ? 'Your chat session expired. Reload the page to continue.'
+                : 'CueChat couldn’t start a new chat. Please try again.';
         } finally {
             this.finishRequest();
         }
@@ -68,13 +70,15 @@ export default () => ({
                 method: 'POST',
                 body: JSON.stringify({ message }),
             });
-            this.history = (await response.json()).history;
+            await this.readHistory(response);
         } catch (error) {
             this.history.pop();
             if (!privateDetails && !this.message) this.message = message;
             this.notice = error.message === 'rate-limit'
                 ? 'You’ve sent several messages. Please wait a minute and try again.'
-                : 'CueChat is temporarily unavailable. Try the booking page or contact CueLab staff.';
+                : error.message === 'expired-session'
+                    ? 'Your chat session expired. Copy your message before reloading the page.'
+                    : 'CueChat couldn’t send your message. Try again, or use one of the links below.';
         } finally {
             this.finishRequest();
         }
@@ -91,8 +95,16 @@ export default () => ({
             signal: AbortSignal.timeout(45000),
             ...options,
         });
-        if (!response.ok) throw new Error(response.status === 429 ? 'rate-limit' : 'request');
+        if (response.status === 419) throw new Error('expired-session');
+        if (response.status === 429) throw new Error('rate-limit');
+        if (!response.ok) throw new Error('request');
         return response;
+    },
+
+    async readHistory(response) {
+        const { history } = await response.json();
+        if (!Array.isArray(history)) throw new Error('request');
+        this.history = history;
     },
 
     finishRequest() {
