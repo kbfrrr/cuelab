@@ -1,12 +1,11 @@
 <x-filament-widgets::widget>
 <div class="cl-analytics">
     <div class="cl-toolbar">
-        <div><h2>Venue overview</h2><p>Bookings, tables, and tournaments at a glance.</p></div>
-        <label class="cl-period">Period
-            <select wire:model.live="period" aria-describedby="cl-period-note">
-                <option value="7">Last 7 days</option><option value="30">Last 30 days</option><option value="all">All time</option>
-            </select>
-        </label>
+        <div><h2>Venue overview</h2><p>Bookings, tables, and tournaments at a glance.</p>
+            <a class="cl-reports-link" href="{{ \App\Filament\Pages\Reports::getUrl() }}">Open Reports &amp; Analytics</a>
+        </div>
+        <x-staff-period-dropdown label="Overview period" description="cl-period-note" :selected="$period"
+            :options="['7' => 'Last 7 days', '30' => 'Last 30 days', 'all' => 'All time']" />
     </div>
     <p id="cl-period-note" class="cl-period-note">Period applies to booking requests and player registrations. Inventory and schedules show the current state.</p>
     <div class="cl-report-grid" wire:loading.class="cl-refreshing" wire:target="period">

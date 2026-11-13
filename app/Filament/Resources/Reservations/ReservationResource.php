@@ -99,19 +99,35 @@ class ReservationResource extends Resource
                 TextColumn::make('quoted_total_minor')->label('Quoted total')->wrapHeader()
                     ->money('PHP', divideBy: 100)->alignEnd()->sortable(),
             ])
-            ->filters([SelectFilter::make('status')->options($statuses)])
+            ->filters([SelectFilter::make('status')->native(false)->options($statuses)])
             ->recordActions([
                 ActionGroup::make([static::checkInAction(), static::lateCallAction(), static::noShowAction()])
-                    ->label('Arrival')->icon('heroicon-o-clock')->button()->outlined()->size('sm'),
+                    ->label('Arrival')->icon('heroicon-o-clock')->button()->size('sm')
+                    ->extraAttributes(['class' => 'cl-arrival-button'])
+                    ->hidden(fn (Reservation $record): bool => $record->status === 'pending'),
+                Action::make('arrival_pending')
+                    ->label('Arrival')->icon('heroicon-o-clock')->button()->size('sm')
+                    ->extraAttributes(['class' => 'cl-arrival-button'])
+                    ->visible(fn (Reservation $record): bool => $record->status === 'pending')
+                    ->disabled()->tooltip('Approve this reservation to enable arrival actions.'),
                 ActionGroup::make([
                     static::detailsAction(),
                     Action::make('confirmed')->label('Approve')->icon('heroicon-o-check')->requiresConfirmation()
+                        ->modalHeading('Approve reservation?')
+                        ->modalDescription('The guest’s booking status will change to Confirmed.')
+                        ->modalSubmitActionLabel('Approve reservation')
                         ->visible(fn (Reservation $record): bool => $record->status === 'pending')
                         ->action(fn (Reservation $record) => app(ReservationService::class)->transition($record, 'confirmed', auth()->user())),
                     Action::make('rejected')->label('Reject')->icon('heroicon-o-x-mark')->color('danger')->requiresConfirmation()
+                        ->modalHeading('Reject reservation?')
+                        ->modalDescription('This ends the pending request and releases the table hold.')
+                        ->modalSubmitActionLabel('Reject reservation')->modalCancelActionLabel('Keep request')
                         ->visible(fn (Reservation $record): bool => $record->status === 'pending')
                         ->action(fn (Reservation $record) => app(ReservationService::class)->transition($record, 'rejected', auth()->user())),
                     Action::make('cancelled')->label('Cancel reservation')->icon('heroicon-o-x-circle')->color('danger')->requiresConfirmation()
+                        ->modalHeading('Cancel reservation?')
+                        ->modalDescription('This releases the reserved time so someone else can book it.')
+                        ->modalSubmitActionLabel('Cancel reservation')->modalCancelActionLabel('Keep reservation')
                         ->visible(fn (Reservation $record): bool => in_array($record->status, ['pending', 'confirmed'], true))
                         ->action(fn (Reservation $record) => app(ReservationService::class)->transition($record, 'cancelled', auth()->user())),
                 ])->label('More actions')->icon('heroicon-o-ellipsis-horizontal')->iconButton()->tooltip('More actions'),
@@ -216,7 +232,7 @@ class ReservationResource extends Resource
             ->fillForm(fn (Reservation $record): array => static::offerFormData($record))
             ->schema([
                 static::walkInCheckbox(),
-                Select::make('outcome')->label('Call outcome')->options(function (Reservation $record): array {
+                Select::make('outcome')->label('Call outcome')->native(false)->options(function (Reservation $record): array {
                     return match ($record->late_contact_outcome) {
                         'coming' => ['declined' => 'Guest is no longer coming'],
                         'no_answer' => ['coming' => 'Guest is coming', 'declined' => 'Guest declined'],

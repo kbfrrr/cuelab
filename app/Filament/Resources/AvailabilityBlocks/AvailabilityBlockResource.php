@@ -41,16 +41,32 @@ class AvailabilityBlockResource extends Resource
 
     public static function form(Schema $schema): Schema
     {
-        return $schema->components([Select::make('billiard_table_id')->relationship('billiardTable', 'name')->placeholder('All tables / venue closure'), Select::make('type')->options(['maintenance' => 'Maintenance', 'closure' => 'Closure', 'tournament' => 'Tournament'])->required(), TextInput::make('reason')->required()->maxLength(255), DateTimePicker::make('starts_at')->seconds(false)->required(), DateTimePicker::make('ends_at')->seconds(false)->required()->after('starts_at')]);
+        return $schema->components([
+            Select::make('billiard_table_id')->native(false)->relationship('billiardTable', 'name')->placeholder('All tables / venue closure'),
+            Select::make('type')->native(false)->options(['maintenance' => 'Maintenance', 'closure' => 'Closure', 'tournament' => 'Tournament'])->required(),
+            TextInput::make('reason')->required()->maxLength(255),
+            DateTimePicker::make('starts_at')->native(false)->displayFormat('M j, Y · g:i A')->suffixIcon('heroicon-o-calendar-days', isInline: true)
+                ->seconds(false)->required(),
+            DateTimePicker::make('ends_at')->native(false)->displayFormat('M j, Y · g:i A')->suffixIcon('heroicon-o-calendar-days', isInline: true)
+                ->seconds(false)->required()->after('starts_at'),
+        ]);
     }
 
     public static function table(Table $table): Table
     {
         return $table->columns([TextColumn::make('billiardTable.name')->label('Table')->placeholder('All tables')->searchable()->sortable(),
-            TextColumn::make('type')->searchable()->sortable(),
+            TextColumn::make('type')->badge()->formatStateUsing(fn (string $state): string => ucfirst($state))
+                ->color(fn (string $state): string => match ($state) {
+                    'maintenance' => 'warning',
+                    'closure' => 'danger',
+                    default => 'gray',
+                })->searchable()->sortable(),
             TextColumn::make('reason')->searchable()->sortable(),
             TextColumn::make('starts_at')->searchable()->sortable(),
-            TextColumn::make('ends_at')->searchable()->sortable()])->filters([])->recordActions([DeleteAction::make()->requiresConfirmation()])->defaultSort('id', 'desc');
+            TextColumn::make('ends_at')->searchable()->sortable()])->filters([])
+            ->recordActions([DeleteAction::make()->requiresConfirmation()])
+            ->recordActionsColumnLabel('Actions')
+            ->defaultSort('id', 'desc');
     }
 
     public static function getPages(): array

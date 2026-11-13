@@ -65,20 +65,30 @@ class TournamentRegistrationResource extends Resource
                     ->whereColumn('tournament_registration_id', 'tournament_registrations.id'),
             ])->with('tournament'))
             ->columns([
-                TextColumn::make('tournament.title'),
-                TextColumn::make('full_name')->searchable(),
-                TextColumn::make('phone'),
-                TextColumn::make('reference')->searchable(),
+                TextColumn::make('tournament.title')->label('Tournament'),
+                TextColumn::make('full_name')->label('Player')->searchable(),
+                TextColumn::make('phone')->label('Phone'),
+                TextColumn::make('reference')->label('Registration reference')->searchable(),
                 TextColumn::make('quoted_fee_minor')->label('Entry fee')->money('PHP', divideBy: 100),
-                TextColumn::make('status')->badge(),
+                TextColumn::make('status')->label('Registration status')->badge()->formatStateUsing(fn (string $state): string => ucfirst($state))
+                    ->color(fn (string $state): string => match ($state) {
+                        'paid' => 'success',
+                        'unpaid' => 'warning',
+                        default => 'gray',
+                    }),
                 TextColumn::make('proof_status')->label('Payment proof')->badge()->formatStateUsing(fn (string $state): string => match ($state) {
                     'pending' => 'Under review',
                     'approved' => 'Approved',
                     'rejected' => 'Rejected',
+                })->color(fn (string $state): string => match ($state) {
+                    'pending' => 'warning',
+                    'approved' => 'success',
+                    'rejected' => 'danger',
+                    default => 'gray',
                 }),
-                TextColumn::make('payment_method'),
-                TextColumn::make('payment_reference'),
-                TextColumn::make('paid_at')->dateTime(),
+                TextColumn::make('payment_method')->label('Payment method'),
+                TextColumn::make('payment_reference')->label('Payment reference'),
+                TextColumn::make('paid_at')->label('Paid on')->dateTime(),
             ])
             ->filters([
                 Filter::make('pending_proof')->label('Awaiting payment review')->query(fn (Builder $query): Builder => $query
@@ -89,6 +99,9 @@ class TournamentRegistrationResource extends Resource
             ])
             ->recordActions([
                 Action::make('review_proof')->label('Review proof')
+                    ->modalHeading('Review GCash payment')
+                    ->modalSubmitActionLabel('Save decision')
+                    ->modalCancelActionLabel('Close review')
                     ->visible(fn (TournamentRegistration $record): bool => $record->status === 'unpaid' && $record->proof_status === 'pending'
                         && $record->tournament->status !== 'cancelled')
                     ->fillForm(fn (TournamentRegistration $record): array => [
@@ -105,7 +118,7 @@ class TournamentRegistrationResource extends Resource
                     })
                     ->schema([
                         Hidden::make('version')->required()->rules(['uuid']),
-                        Select::make('decision')->options(fn (TournamentRegistration $record): array => $record->tournament->ends_at->gt(now()->subDays(30))
+                        Select::make('decision')->native(false)->options(fn (TournamentRegistration $record): array => $record->tournament->ends_at->gt(now()->subDays(30))
                             ? ['approve' => 'Approve payment', 'reject' => 'Reject proof']
                             : ['reject' => 'Reject proof'])
                             ->rules(['in:approve,reject'])->required()->live(),
@@ -124,10 +137,14 @@ class TournamentRegistrationResource extends Resource
                         }
                     }),
                 Action::make('cancelled')->label('Cancel registration')
+                    ->modalHeading('Cancel registration?')
                     ->modalDescription('Cancellation releases the seat. Any refund must be handled separately by staff.')
+                    ->modalCancelActionLabel('Keep registration')
                     ->requiresConfirmation()->visible(fn ($record) => $record->status !== 'cancelled')
+                    ->modalSubmitAction(fn (Action $action): Action => $action->label('Cancel registration')->color('danger'))
                     ->action(fn ($record) => app(TournamentService::class)->cancelRegistration($record, auth()->user())),
             ])
+            ->recordActionsColumnLabel('Actions')
             ->defaultSort('id', 'desc');
     }
 

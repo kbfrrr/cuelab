@@ -20,8 +20,13 @@ class ReservationService
 {
     public function lockScheduleForWrite(): void
     {
-        if (DB::getDriverName() === 'pgsql') {
+        $driver = DB::getDriverName();
+
+        if ($driver === 'pgsql') {
             DB::select('select pg_advisory_xact_lock(8274, 1)');
+        } elseif (in_array($driver, ['mysql', 'mariadb'], true)) {
+            // Serialize schedule writes before any availability reads in the transaction.
+            BilliardTable::query()->orderBy('id')->lockForUpdate()->get(['id']);
         }
     }
 

@@ -6,7 +6,7 @@
     <title>{{ $title }} · CueLab</title>
     <meta name="description" content="Discover CueLab. Explore billiards, venue information, and upcoming booking and tournament services.">
     <meta name="theme-color" content="#fbf7f3">
-    <script>try { document.documentElement.dataset.theme = localStorage.getItem('cuelab-theme') || (matchMedia('(prefers-color-scheme: dark)').matches ? 'dark' : 'light'); } catch(e) {}</script>
+    @include('components.theme-preference')
     @fonts(['geist', 'geist-mono', ...$extraFonts])
     @vite(['resources/css/app.css','resources/js/app.js'])
 </head>

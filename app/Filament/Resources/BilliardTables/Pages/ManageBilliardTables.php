@@ -12,6 +12,8 @@ class ManageBilliardTables extends ManageRecords
 
     protected function getHeaderActions(): array
     {
-        return [CreateAction::make()];
+        return [
+            CreateAction::make()->mutateDataUsing(fn (array $data): array => [...$data, 'type' => 'Standard']),
+        ];
     }
 }

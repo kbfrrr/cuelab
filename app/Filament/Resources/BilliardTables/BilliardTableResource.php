@@ -4,6 +4,7 @@ namespace App\Filament\Resources\BilliardTables;
 
 use App\Filament\Resources\BilliardTables\Pages\ManageBilliardTables;
 use App\Models\BilliardTable;
+use App\Models\ServiceRate;
 use Filament\Actions\EditAction;
 use Filament\Forms\Components\Select;
 use Filament\Forms\Components\Textarea;
@@ -11,7 +12,6 @@ use Filament\Forms\Components\TextInput;
 use Filament\Forms\Components\Toggle;
 use Filament\Resources\Resource;
 use Filament\Schemas\Schema;
-use Filament\Tables\Columns\IconColumn;
 use Filament\Tables\Columns\TextColumn;
 use Filament\Tables\Table;
 use Illuminate\Database\Eloquent\Model;
@@ -43,15 +43,26 @@ class BilliardTableResource extends Resource
 
     public static function form(Schema $schema): Schema
     {
-        return $schema->components([TextInput::make('name')->required()->maxLength(100)->unique(ignoreRecord: true), TextInput::make('type')->required()->maxLength(100), Select::make('service_rate_id')->relationship('serviceRate', 'name')->required(), Textarea::make('description')->maxLength(2000), Toggle::make('is_active')->default(true)]);
+        return $schema->components([
+            TextInput::make('name')->required()->maxLength(100)->unique(ignoreRecord: true),
+            Select::make('service_rate_id')->label('Hourly rate')->native(false)->relationship('serviceRate', 'name')->required()
+                ->getOptionLabelFromRecordUsing(fn (ServiceRate $record): string => $record->name.' · ₱'.number_format($record->amount_minor / 100, 2).'/hour')
+                ->helperText('Used to quote bookings. Manage the amount in Service Rates.'),
+            Textarea::make('description')->maxLength(2000)->columnSpanFull(),
+            Toggle::make('is_active')->label('Active')->default(true),
+        ]);
     }
 
     public static function table(Table $table): Table
     {
         return $table->columns([TextColumn::make('name')->searchable()->sortable(),
-            TextColumn::make('type')->searchable()->sortable(),
-            TextColumn::make('serviceRate.name')->searchable()->sortable(),
-            IconColumn::make('is_active')->boolean()->sortable()])->filters([])->recordActions([EditAction::make()])->defaultSort('id', 'desc');
+            TextColumn::make('serviceRate.amount_minor')->label('Hourly rate')->money('PHP', divideBy: 100)->sortable(),
+            TextColumn::make('is_active')->label('Status')->badge()
+                ->formatStateUsing(fn (bool $state): string => $state ? 'Active' : 'Inactive')
+                ->color(fn (bool $state): string => $state ? 'success' : 'gray')->sortable()])->filters([])
+            ->recordActions([EditAction::make()])
+            ->recordActionsColumnLabel('Actions')
+            ->defaultSort('id', 'desc');
     }
 
     public static function getPages(): array

@@ -18,12 +18,13 @@ class ManageReservations extends ManageRecords
 
     protected function getHeaderActions(): array
     {
-        return [Action::make('walk_in')->label('Record walk-in')->schema([
-            Select::make('billiard_table_id')->label('Table')->options(BilliardTable::where('is_active', true)->pluck('name', 'id'))->required(),
-            DateTimePicker::make('starts_at')->default(now())->seconds(false)->required(),
+        return [Action::make('walk_in')->label('Record walk-in')->modalWidth('lg')->modalSubmitActionLabel('Record walk-in')->schema([
+            Select::make('billiard_table_id')->label('Table')->native(false)->options(BilliardTable::where('is_active', true)->pluck('name', 'id'))->required(),
+            DateTimePicker::make('starts_at')->native(false)->displayFormat('M j, Y · g:i A')->suffixIcon('heroicon-o-calendar-days', isInline: true)
+                ->default(now())->seconds(false)->required(),
             TextInput::make('minutes')->integer()->minValue(15)->maxValue(480)->default(60)->required(),
-            TextInput::make('customer_name')->required()->maxLength(150),
-            TextInput::make('phone')->required()->maxLength(32),
+            TextInput::make('customer_name')->prefixIcon('heroicon-o-user')->required()->maxLength(150),
+            TextInput::make('phone')->prefixIcon('heroicon-o-phone')->inputMode('tel')->required()->maxLength(32),
         ])->action(function (array $data): void {
             $service = app(ReservationService::class);
             $quote = $service->quote((int) $data['billiard_table_id'], $data['starts_at'], (int) $data['minutes'], true);

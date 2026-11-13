@@ -83,6 +83,30 @@ class ReservationArrivalTest extends TestCase
             ->assertTableActionDisabled('release_no_show', $this->booking);
     }
 
+    public function test_arrival_menu_is_disabled_until_staff_approves_the_reservation(): void
+    {
+        $this->actingAs($this->staff);
+        Filament::setCurrentPanel(Filament::getPanel('admin'));
+        $this->travelTo($this->time('13:59'));
+        $this->booking->update(['status' => 'pending', 'hold_expires_at' => now()->addMinutes(15)]);
+
+        Livewire::test(ManageReservations::class)
+            ->assertTableActionVisible('arrival_pending', $this->booking)
+            ->assertTableActionDisabled('arrival_pending', $this->booking)
+            ->assertTableActionHidden('check_in', $this->booking)
+            ->callTableAction('confirmed', $this->booking)
+            ->assertHasNoErrors();
+
+        $this->booking->refresh();
+        $this->assertSame('confirmed', $this->booking->status);
+        $this->travelTo($this->time('14:00'));
+
+        Livewire::test(ManageReservations::class)
+            ->assertTableActionHidden('arrival_pending', $this->booking)
+            ->assertTableActionVisible('check_in', $this->booking)
+            ->assertTableActionEnabled('check_in', $this->booking);
+    }
+
     public function test_unanswered_call_requires_five_minutes_and_an_attested_walk_in(): void
     {
         $this->travelTo($this->time('14:20'));

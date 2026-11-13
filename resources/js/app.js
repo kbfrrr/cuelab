@@ -8,7 +8,7 @@ Alpine.data('siteShell', () => ({
     toggleTheme() {
         this.theme = this.theme === 'dark' ? 'light' : 'dark';
         document.documentElement.dataset.theme = this.theme;
-        try { localStorage.setItem('cuelab-theme', this.theme); } catch (error) {}
+        try { localStorage.setItem('filament:theme:mode', this.theme); } catch (error) {}
     },
 }));
 Alpine.data('heroCarousel', (count) => ({
