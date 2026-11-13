@@ -64,12 +64,40 @@ class PublicPagesTest extends TestCase
 
     public function test_unimplemented_submissions_are_not_accepted(): void
     {
-        $this->get('/contact')->assertOk()
-            ->assertSee('Open in Maps')->assertSee('Call the venue')->assertSee('Social media')
-            ->assertDontSee('Leave a message.');
         $this->get('/booking')->assertSee('No reservations are being accepted');
         $this->post('/contact', ['message' => 'test'])->assertStatus(405);
         $this->post('/booking')->assertStatus(419);
+    }
+
+    public function test_contact_shows_verified_details_and_directions_without_a_message_form(): void
+    {
+        BusinessSetting::factory()->create(['key' => 'address', 'value' => '2/F, MacArthur Hwy, Angeles', 'is_verified' => true]);
+        BusinessSetting::factory()->create(['key' => 'phone', 'value' => '+63 (917) 555-0123', 'is_verified' => true]);
+        BusinessSetting::factory()->create(['key' => 'social_url', 'value' => 'https://example.test/cuelab', 'is_verified' => true]);
+
+        $page = $this->get('/contact')->assertOk()
+            ->assertSeeTextInOrder(['Visit CueLab', '2/F, MacArthur Hwy, Angeles', 'Get directions', 'Call the venue', 'Social media'])
+            ->assertSee('href="tel:+639175550123"', false)
+            ->assertSee('href="https://example.test/cuelab"', false)
+            ->assertDontSee('Leave a message')
+            ->assertDontSee('Contact form preview');
+
+        $mapsHref = 'href="https://www.google.com/maps/search/?api=1&amp;query=2%2FF%2C%20MacArthur%20Hwy%2C%20Angeles"';
+        $this->assertSame(2, substr_count($page->getContent(), $mapsHref));
+    }
+
+    public function test_contact_falls_back_when_details_are_missing_or_unverified(): void
+    {
+        BusinessSetting::factory()->create(['key' => 'phone', 'value' => '09175550123', 'is_verified' => false]);
+        BusinessSetting::factory()->create(['key' => 'social_url', 'value' => 'https://example.test/unverified', 'is_verified' => false]);
+
+        $this->get('/contact')->assertOk()
+            ->assertSee('Address pending verification')
+            ->assertSee('Phone number pending verification')
+            ->assertSee('Official social link pending verification')
+            ->assertSee('query=The%20Cue%20Lab%20Billiards%2C%20Angeles%2C%20Pampanga')
+            ->assertDontSee('tel:')
+            ->assertDontSee('https://example.test/unverified');
     }
 
     public function test_homepage_shows_verified_overnight_hours_and_table_rate(): void

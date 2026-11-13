@@ -1,0 +1,112 @@
+[data-cuelab-page=staff-login] {
+    --cl-login-border: #9a8589;
+    --cl-login-button: #a92032;
+    --cl-login-button-hover: #912031;
+    --cl-login-button-text: #fff8f5;
+    font-family: Geist, ui-sans-serif, system-ui, sans-serif;
+}
+
+.dark [data-cuelab-page=staff-login] { --cl-login-border: #8a7079; }
+
+[data-cuelab-page=staff-login] .fi-simple-main-ctn { padding: 24px 16px; }
+
+[data-cuelab-page=staff-login] .fi-simple-main {
+    max-width: 448px;
+    margin: 0;
+    padding: 24px;
+    border: 1px solid var(--cl-line);
+    border-radius: 16px;
+    background: var(--cl-surface);
+    box-shadow: none;
+}
+
+@media (min-width: 640px) {
+    [data-cuelab-page=staff-login] .fi-simple-main { padding: 32px; }
+}
+
+[data-cuelab-page=staff-login] .fi-simple-header { align-items: center; }
+[data-cuelab-page=staff-login] .fi-simple-header .fi-logo { height: auto !important; }
+
+[data-cuelab-page=staff-login] .fi-logo .cue-wordmark {
+    position: relative;
+    width: 9rem;
+    height: 5.25rem;
+    background: transparent;
+}
+
+[data-cuelab-page=staff-login] .fi-logo .cue-wordmark img {
+    position: absolute;
+    top: 50%;
+    left: 50%;
+    width: 100%;
+    max-width: none;
+    height: auto;
+    transform: translate(-50%, -50%);
+}
+
+html:not(.dark) [data-cuelab-page=staff-login] .cue-wordmark img { mix-blend-mode: multiply; }
+
+[data-cuelab-page=staff-login] .fi-simple-header-heading {
+    color: var(--cl-ink);
+    font: 600 clamp(2rem, 4vw, 2.5rem)/1.1 'Barlow Condensed', Geist, sans-serif;
+    text-align: center;
+}
+
+[data-cuelab-page=staff-login] .fi-fo-field-wrp-label { color: var(--cl-ink); }
+[data-cuelab-page=staff-login] .fi-input-wrp {
+    min-height: 48px;
+    border: 1px solid var(--cl-login-border);
+    border-radius: 8px;
+    background: var(--cl-canvas);
+    box-shadow: none;
+}
+
+[data-cuelab-page=staff-login] .fi-input {
+    min-height: 46px;
+    color: var(--cl-ink);
+    font-size: 1rem;
+}
+
+[data-cuelab-page=staff-login] .fi-input-wrp-suffix .fi-icon-btn { min-width: 44px; }
+[data-cuelab-page=staff-login] .fi-input-wrp-suffix .fi-icon-btn .fi-icon { color: var(--cl-muted); }
+[data-cuelab-page=staff-login] .fi-checkbox-input { border-color: var(--cl-login-border); }
+
+[data-cuelab-page=staff-login] .fi-input-wrp.fi-invalid { border-color: var(--cl-accent); }
+[data-cuelab-page=staff-login] .fi-fo-field-wrp-error-message,
+[data-cuelab-page=staff-login] .fi-fo-field-wrp-label .fi-required { color: var(--cl-accent); }
+
+[data-cuelab-page=staff-login] .fi-input-wrp:has(input:focus-visible),
+[data-cuelab-page=staff-login] :is(button, a, input[type=checkbox]):focus-visible {
+    outline: 2px solid var(--cl-accent);
+    outline-offset: 2px;
+}
+
+[data-cuelab-page=staff-login] .fi-btn[type=submit] {
+    width: 100%;
+    min-height: 48px;
+    border-radius: 8px;
+    background: var(--cl-login-button);
+    color: var(--cl-login-button-text);
+    font-size: 1rem;
+    font-weight: 600;
+}
+
+[data-cuelab-page=staff-login] .fi-btn[type=submit]:enabled:hover { background: var(--cl-login-button-hover); }
+
+.cue-staff-login-home {
+    display: inline-flex;
+    min-height: 44px;
+    align-items: center;
+    justify-self: start;
+    gap: 8px;
+    color: var(--cl-accent);
+    font-size: .875rem;
+    font-weight: 500;
+}
+
+.cue-staff-login-home svg { width: 16px; height: 16px; }
+.cue-staff-login-home:hover { text-decoration: underline; text-underline-offset: 3px; }
+
+@media (prefers-reduced-motion: reduce) {
+    [data-cuelab-page=staff-login] :is(.fi-btn, .fi-input-wrp, .fi-icon-btn) { transition: none; }
+}

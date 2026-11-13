@@ -17,6 +17,10 @@ export default defineConfig({
                     weights: [400, 500],
                     optimizedFallbacks: false,
                 }),
+                bunny('Barlow Condensed', {
+                    weights: [600],
+                    optimizedFallbacks: false,
+                }),
             ],
         }),
         tailwindcss(),

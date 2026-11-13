@@ -203,13 +203,231 @@
 .cue-public-shell .outline-ball { font-size:28px; width:60px; height:60px; }
 
 /* Contact map */
-.cue-map { margin:1.75rem 0 0; border:1px solid var(--line); border-radius:var(--cue-radius); overflow:hidden; background:var(--cue-paper); }
-.cue-map a { display:block; color:inherit; }
-.cue-map img { display:block; width:100%; height:auto; aspect-ratio:4/3; object-fit:cover; object-position:92% 45%; transition:transform .4s ease; }
-.cue-map a:hover img { transform:scale(1.015); }
-.cue-map figcaption { display:flex; justify-content:space-between; align-items:center; gap:1rem; padding:.8rem 1rem; border-top:1px solid var(--line); font-size:.8125rem; }
-.cue-map figcaption span:first-child { color:var(--ink); font-weight:500; }
-.cue-map figcaption span:last-child { color:var(--muted); font-family:var(--font-mono); font-size:.6875rem; letter-spacing:.06em; text-transform:uppercase; white-space:nowrap; }
+.cue-public-shell:has(> main > :is(.cue-contact, .cue-tournaments)) {
+    display:flex;
+    flex-direction:column;
+    min-height:100vh;
+    min-height:100dvh;
+}
+.cue-public-shell:has(> main > :is(.cue-contact, .cue-tournaments)) > .site-footer { margin-block-start:auto; }
+.cue-contact { padding-block:clamp(2rem,6vw,5rem); }
+.cue-contact-location { display:grid; align-items:center; gap:clamp(1.5rem,4vw,3rem); }
+.cue-contact-intro h1 {
+    font:600 clamp(2.5rem,6vw,4rem)/1 'Barlow Condensed', var(--font-sans);
+    letter-spacing:-.02em;
+    color:var(--ink);
+}
+.cue-contact-intro address {
+    max-width:34ch;
+    margin-block:1rem 1.5rem;
+    color:var(--muted);
+    font-style:normal;
+    overflow-wrap:anywhere;
+}
+.cue-contact .cue-contact-directions { gap:.625rem; min-height:44px; border-radius:8px; background:#a92032; color:#fff8f5; }
+.cue-contact .cue-contact-directions:hover { background:#912031; }
+.cue-contact-directions svg { width:1rem; height:1rem; }
+.cue-contact-map {
+    display:block;
+    overflow:hidden;
+    border:1px solid var(--line);
+    border-radius:16px;
+    background:var(--cue-paper);
+}
+.cue-contact-map img { display:block; width:100%; height:auto; }
+.cue-contact-details {
+    display:grid;
+    grid-template-columns:1fr;
+    gap:1rem;
+    margin:1.5rem 0 0;
+    padding:clamp(1rem,3vw,1.5rem);
+    border:1px solid var(--line);
+    border-radius:16px;
+    background:var(--cue-paper);
+}
+.cue-contact-details > div { min-width:0; padding:0; border:0; }
+.cue-contact-details dt { color:var(--ink); font-size:.875rem; font-weight:600; }
+.cue-contact-details dd { color:var(--muted); font-size:1rem; overflow-wrap:anywhere; }
+.cue-contact-details a { color:var(--cue-red); text-decoration:underline; text-underline-offset:.2em; }
+.cue-contact a:focus-visible { outline:2px solid var(--cue-focus); outline-offset:3px; }
+@media (min-width:768px) {
+    .cue-contact-location { grid-template-columns:minmax(0,2fr) minmax(0,3fr); }
+    .cue-contact-details { grid-template-columns:repeat(2,minmax(0,1fr)); }
+}
+
+/* Tournaments */
+.cue-tournaments {
+    --tournaments-action:#a92032;
+    --tournaments-action-hover:#912031;
+    --tournaments-action-text:#fff8f5;
+    --tournaments-field-border:#9a8589;
+    padding-block:clamp(2rem,5vw,4rem);
+}
+
+[data-theme=dark] .cue-tournaments { --tournaments-field-border:#8a7079; }
+
+.cue-tournaments-hero {
+    display:grid;
+    align-items:center;
+    gap:clamp(1.5rem,4vw,3rem);
+    padding-bottom:clamp(2rem,5vw,4rem);
+    border-bottom:1px solid var(--line);
+}
+
+.cue-tournaments h1,
+.cue-public-shell .cue-tournaments h2 {
+    font-family:'Barlow Condensed', var(--font-sans);
+    font-weight:600;
+    letter-spacing:-.015em;
+    overflow-wrap:anywhere;
+}
+
+.cue-tournaments h1 { font-size:clamp(3rem,6vw,5rem); }
+.cue-tournaments h1 em { display:block; font:inherit; color:var(--cue-red); }
+.cue-public-shell .cue-tournaments h2 { font-size:clamp(1.75rem,3.2vw,2.5rem); }
+.cue-tournaments-intro p { max-width:34ch; margin-block:1rem 1.5rem; }
+
+.cue-tournaments-photo {
+    display:block;
+    width:100%;
+    height:auto;
+    aspect-ratio:2 / 1;
+    object-fit:cover;
+    object-position:center 67%;
+    border:1px solid var(--line);
+    border-radius:16px;
+}
+
+.cue-tournaments-grid {
+    display:grid;
+    gap:clamp(1.5rem,4vw,2.5rem);
+    align-items:start;
+    padding-top:clamp(2rem,5vw,3rem);
+}
+
+.cue-tournaments-timezone { margin-top:.5rem; font-size:.875rem; }
+.cue-tournaments-list { list-style:none; margin:1rem 0 0; padding:0; }
+
+.cue-tournaments-event,
+.cue-tournaments-empty,
+.cue-tournaments-lookup {
+    border:1px solid var(--line);
+    border-radius:16px;
+    background:var(--cue-paper);
+}
+
+.cue-tournaments-event {
+    display:grid;
+    grid-template-columns:auto minmax(0,1fr);
+    align-items:center;
+    gap:.25rem 1rem;
+    padding:1rem;
+}
+
+.cue-tournaments-event + .cue-tournaments-event { margin-top:.75rem; }
+
+.cue-tournaments-date {
+    display:grid;
+    align-content:center;
+    justify-items:center;
+    gap:2px;
+    min-width:3.75rem;
+    min-height:4.75rem;
+    padding:.5rem;
+    border-radius:8px;
+    background:var(--cue-rose);
+    color:var(--cue-red);
+    font-size:.75rem;
+    font-weight:600;
+    line-height:1.1;
+}
+
+.cue-tournaments-date strong {
+    font:600 1.625rem/1 'Barlow Condensed', var(--font-sans);
+    font-variant-numeric:tabular-nums;
+}
+
+.cue-public-shell .cue-tournaments-event h3 {
+    font-size:clamp(1rem,2vw,1.25rem);
+    font-weight:600;
+    line-height:1.3;
+    overflow-wrap:anywhere;
+}
+
+.cue-tournaments-event-info p { margin-top:.375rem; font-size:.875rem; }
+
+.cue-tournaments-event-link {
+    display:inline-flex;
+    grid-column:2;
+    align-items:center;
+    justify-self:start;
+    gap:.375rem;
+    min-height:44px;
+    color:var(--cue-red);
+    font-size:.875rem;
+    font-weight:600;
+    text-decoration:underline;
+    text-underline-offset:.2em;
+}
+
+.cue-tournaments-empty { margin-top:1rem; padding:1.5rem; }
+.cue-tournaments-lookup { padding:clamp(1.25rem,3vw,2rem); }
+.cue-tournaments-lookup > p { margin-top:.625rem; font-size:.9375rem; }
+.cue-tournaments-lookup form { margin-top:1.25rem; }
+.cue-tournaments-lookup label { margin:0; font-size:.875rem; font-weight:600; }
+
+.cue-public-shell .cue-tournaments-lookup input[type=text] {
+    min-height:48px;
+    margin-top:.5rem;
+    border-color:var(--tournaments-field-border);
+    background:var(--bg);
+    font-size:1rem;
+}
+
+.cue-public-shell .cue-tournaments-lookup input[type=text]:is(:focus, [aria-invalid=true]) {
+    border-color:var(--cue-focus);
+}
+
+.cue-public-shell .cue-tournaments-lookup input[type=text]:focus-visible {
+    outline:2px solid var(--cue-focus);
+    outline-offset:3px;
+}
+
+.cue-tournaments-error { margin-top:.625rem; color:var(--cue-red); font-size:.875rem; }
+
+.cue-public-shell .cue-tournaments .cue-tournaments-primary {
+    min-height:44px;
+    border-radius:8px;
+    background:var(--tournaments-action);
+    color:var(--tournaments-action-text);
+    font-weight:600;
+}
+
+.cue-public-shell .cue-tournaments .cue-tournaments-primary:hover {
+    background:var(--tournaments-action-hover);
+    opacity:1;
+}
+
+.cue-tournaments-lookup .cue-tournaments-primary { width:100%; margin-top:1rem; }
+
+@media (min-width:600px) {
+    .cue-tournaments-event { grid-template-columns:auto minmax(0,1fr) auto; padding:1rem 1.25rem; }
+    .cue-tournaments-event-link { grid-column:auto; }
+}
+
+@media (min-width:768px) {
+    .cue-tournaments-hero { grid-template-columns:minmax(0,2fr) minmax(0,3fr); }
+    .cue-tournaments-photo { aspect-ratio:1.8; }
+}
+
+@media (min-width:960px) {
+    .cue-tournaments-grid { grid-template-columns:minmax(0,1.7fr) minmax(0,1fr); }
+}
+
+@media (prefers-reduced-motion:reduce) {
+    html:has(.cue-tournaments) { scroll-behavior:auto; }
+    .cue-public-shell .cue-tournaments :is(.button, input[type=text]) { transition:none; }
+}
 
 /* CueChat */
 .cue-public-shell .chat-toggle {

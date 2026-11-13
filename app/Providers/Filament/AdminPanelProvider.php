@@ -2,6 +2,7 @@
 
 namespace App\Providers\Filament;
 
+use App\Filament\Pages\StaffLogin;
 use Filament\Enums\ThemeMode;
 use Filament\Http\Middleware\Authenticate;
 use Filament\Http\Middleware\AuthenticateSession;
@@ -16,6 +17,7 @@ use Illuminate\Contracts\View\View;
 use Illuminate\Cookie\Middleware\AddQueuedCookiesToResponse;
 use Illuminate\Cookie\Middleware\EncryptCookies;
 use Illuminate\Foundation\Http\Middleware\PreventRequestForgery;
+use Illuminate\Foundation\Vite;
 use Illuminate\Routing\Middleware\SubstituteBindings;
 use Illuminate\Session\Middleware\StartSession;
 use Illuminate\View\Middleware\ShareErrorsFromSession;
@@ -31,6 +33,8 @@ class AdminPanelProvider extends PanelProvider
             ->brandLogo(fn (): View => view('components.cuelab-wordmark'))
             ->brandLogoHeight('3.5rem')
             ->renderHook(PanelsRenderHook::BODY_START, fn (): View => view('components.cuelab-wordmark-filter'))
+            ->renderHook(PanelsRenderHook::HEAD_END, fn () => app(Vite::class)->fonts(['geist', 'barlow-condensed']), scopes: StaffLogin::class)
+            ->renderHook(PanelsRenderHook::AUTH_LOGIN_FORM_AFTER, fn (): View => view('filament.staff-login-home'), scopes: StaffLogin::class)
             ->defaultThemeMode(ThemeMode::Light)
             ->sidebarCollapsibleOnDesktop()
             ->sidebarWidth('15rem')
@@ -39,7 +43,7 @@ class AdminPanelProvider extends PanelProvider
             ->id('admin')
             ->path('admin')
             ->viteTheme('resources/css/filament/admin/theme.css')
-            ->login()
+            ->login(StaffLogin::class)
             ->colors([
                 'primary' => Color::hex('#a92032'),
                 'gray' => Color::Stone,
