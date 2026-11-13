@@ -23,9 +23,21 @@ class CueLabDemoSeeder extends Seeder
 {
     public const DATABASE_FILE = 'cuelab-demo.sqlite';
 
+    public const LOCAL_MYSQL_DATABASE = 'cuelab_local';
+
     public const STAFF_EMAIL = 'demo.staff@example.test';
 
     public const PASSWORD = 'password';
+
+    public static function supportsLocalMysql(): bool
+    {
+        $connection = DB::connection();
+
+        return app()->environment('local')
+            && in_array($connection->getDriverName(), ['mysql', 'mariadb'], true)
+            && in_array($connection->getConfig('host'), ['127.0.0.1', 'localhost', '::1'], true)
+            && $connection->getDatabaseName() === self::LOCAL_MYSQL_DATABASE;
+    }
 
     public function run(): void
     {
@@ -37,8 +49,11 @@ class CueLabDemoSeeder extends Seeder
             && is_string($hostedPassword) && strlen($hostedPassword) >= 24
             && $hostedPassword !== self::PASSWORD;
 
-        if (! $isHostedDemo && (! app()->environment('local', 'testing') || DB::getDriverName() !== 'sqlite' || ! ($isDemoFile || $isTestDatabase))) {
-            throw new RuntimeException('Use a local SQLite database named '.self::DATABASE_FILE.' for demo data.');
+        $isLocalSqlite = app()->environment('local', 'testing')
+            && DB::getDriverName() === 'sqlite' && ($isDemoFile || $isTestDatabase);
+
+        if (! $isHostedDemo && ! $isLocalSqlite && ! self::supportsLocalMysql()) {
+            throw new RuntimeException('Use the local demo SQLite file '.self::DATABASE_FILE.' or a localhost MySQL/MariaDB database named '.self::LOCAL_MYSQL_DATABASE.'.');
         }
 
         $now = CarbonImmutable::now();

@@ -8,6 +8,8 @@ class DatabaseSeeder extends Seeder
 {
     public function run(): void
     {
-        $this->call(BusinessSettingsSeeder::class);
+        $this->call(CueLabDemoSeeder::supportsLocalMysql()
+            ? CueLabDemoSeeder::class
+            : BusinessSettingsSeeder::class);
     }
 }
