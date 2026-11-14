@@ -35,7 +35,7 @@ class PublicPagesTest extends TestCase
 
     public function test_home_links_to_the_same_venue_policy_on_rates(): void
     {
-        $policy = 'CueLab sells snacks, non-alcoholic drinks, and alcoholic drinks. Guests may bring their own alcohol and rice meals. Rice meals are bring-your-own only. Ask CueLab staff where vaping is permitted.';
+        $policy = 'CueLab sells non-alcoholic and alcoholic drinks. You’re welcome to bring your own food, including rice meals, or order delivery. Guests may bring their own alcohol.';
 
         $this->get(route('home'))->assertOk()
             ->assertSeeTextInOrder(['Plan your visit', $policy, 'House rules'])

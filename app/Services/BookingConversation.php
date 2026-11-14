@@ -50,6 +50,31 @@ class BookingConversation
     /** @return array{reply: string, actions: list<array{label: string, url: string}>}|null */
     public function answerStructuredRequest(Session $session, string $question): ?array
     {
+        if (preg_match('/^(?:(?:i (?:would like|want) to play|can i play) (?:on )?)?next week$/D', $question)) {
+            $session->forget(['cuechat.draft.date_text', 'cuechat.selection']);
+            $result = $this->respond($session, []);
+            if ($result['reply'] === self::QUESTIONS['date_text']) {
+                $result['reply'] = 'Which date next week works for you? You can say “Monday next week” or give the exact date.';
+            }
+
+            return $result;
+        }
+
+        if (preg_match('/^(?:i (?:would like|want) to play|can i play) (?:on )?(?<date>.+?)(?:,\s*| at )(?<time>\d{1,2}(?::\d{2})?(?:\s*(?:a\.?m\.?|p\.?m\.?))?|noon|midnight)(?:(?:,\s*| for )(?<duration>[^,]+?)(?:,\s*(?<named_table>[^,]+)| (?<any_table>any table|any|no preference))?)?$/D', $question, $parts, PREG_UNMATCHED_AS_NULL)
+            && $this->date($parts['date']) !== null
+            && ($this->time($parts['time'], null) !== null || preg_match(self::BARE_HOUR, $parts['time']))
+            && ($parts['duration'] === null || $this->duration($parts['duration']) !== null)) {
+            $table = $parts['named_table'] ?? $parts['any_table'];
+            $session->forget(['cuechat.draft', 'cuechat.selection', 'cuechat.ambiguous_hour']);
+
+            return $this->respond($session, [
+                'date_text' => $parts['date'],
+                'start_time_text' => $parts['time'],
+                ...($parts['duration'] === null ? [] : ['duration_text' => $parts['duration']]),
+                ...($table === null ? [] : ['table_text' => $table]),
+            ]);
+        }
+
         if (! preg_match('/^may table ba (?:sa )?(?<date>.+?) ng (?<time>\d{1,2}(?::\d{2})?\s*(?:am|pm)),\s*(?<duration>[^,]+),\s*(?<table>[^,]+)$/u', $question, $parts)
             || $this->date($parts['date']) === null
             || $this->time($parts['time'], null) === null
@@ -128,7 +153,7 @@ class BookingConversation
     public function respond(Session $session, array $details): array
     {
         if (! $this->reservations->enabled()) {
-            return $this->reply('Online booking is currently unavailable. Please contact CueLab staff.', 'Contact CueLab', route('contact'));
+            return $this->reply('Online booking is unavailable right now. Our team can help you plan your visit.', 'Contact CueLab', route('contact'));
         }
 
         $previous = $session->get('cuechat.draft', []);
@@ -213,8 +238,8 @@ class BookingConversation
         }
 
         return $alternatives === []
-            ? $this->reply('No alternatives are available for that request. Try another date or time.')
-            : $this->reply('That slot is unavailable. Try one of these options:'."\n".implode("\n", $alternatives));
+            ? $this->reply('I couldn’t find a table around that time. What other date or time works for you?')
+            : $this->reply('I couldn’t find a match for that slot, but I found these options. Would one work for you?'."\n".implode("\n", $alternatives));
     }
 
     private function date(string $value): ?string
@@ -228,6 +253,9 @@ class BookingConversation
         }
         if (in_array($value, ['day after tomorrow', 'sa makalawa', 'makalawa'], true)) {
             return $today->addDays(2)->toDateString();
+        }
+        if (preg_match('/^(monday|tuesday|wednesday|thursday|friday|saturday|sunday) next week$/D', $value, $parts)) {
+            return $today->startOfWeek(CarbonImmutable::MONDAY)->addWeek()->subDay()->next($parts[1])->toDateString();
         }
         if (preg_match('/^(?:next )?(monday|tuesday|wednesday|thursday|friday|saturday|sunday)$/D', $value, $parts)) {
             return $today->next($parts[1])->toDateString();
@@ -329,7 +357,7 @@ class BookingConversation
         $when = $start->format('D, M j \a\t g:i A');
 
         return $this->reply(
-            "{$quote['table_name']} is available {$when} (Philippine time) for {$quote['minutes']} minutes. Estimated total: PHP {$price}. Continue to the booking form to review and submit for staff approval.",
+            "I found {$quote['table_name']} for you {$when} (Philippine time) for {$quote['minutes']} minutes. The estimated total is PHP {$price}. If that works for you, review the details and send your request to our team for approval.",
             'Review booking request',
             route('booking', ['cuechat' => $token]),
         );

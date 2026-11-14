@@ -72,7 +72,7 @@ class CueChatController extends Controller
             return $this->status($request);
         }
         if ($message === 'Ask about CueLab') {
-            return $this->reply('Ask me about rates, hours, upcoming tournaments, or house rules.');
+            return $this->reply('Happy to help! What would you like to know about CueLab? You can ask me about rates, hours, upcoming tournaments, or house rules.');
         }
         if (preg_match('/^(?:please )?(?:confirm|approve) (?:my|the) (?:booking|reservation) without (?:checking|staff approval)\b/iu', Str::squish($message))) {
             return $this->referral('Only CueLab staff can approve a booking request.');
@@ -155,7 +155,7 @@ class CueChatController extends Controller
     {
         $vaping = preg_match('/\b(?:vapes?|vaping|magvape|nagvavape|e[\s-]?cigarettes?)\b/iu', $message);
         $bringYourOwn = preg_match('/\b(?:alcohol(?:ic)?|beers?|wine|liquor|alak|serbesa|rice[\s-]+meals?|kanin)\b/iu', $message);
-        $foodOrDrink = preg_match('/\b(?:snacks?|drinks?|beverages?|soda|softdrinks?|inumin|tubig|food|pagkain|merienda|meryenda|pulutan|baon|baunin|pizza|meals?)\b/iu', $message);
+        $foodOrDrink = preg_match('/\b(?:snacks?|drinks?|beverages?|soda|softdrinks?|inumin|tubig|food|pagkain|merienda|meryenda|pulutan|baon|baunin|pizza|meals?|delivery|magpa[- ]?deliver)\b/iu', $message);
         $menu = preg_match('/\bmenu\b/iu', $message);
 
         if (! $vaping && ! $bringYourOwn && ! $foodOrDrink && ! $menu) {
@@ -164,17 +164,13 @@ class CueChatController extends Controller
 
         $policy = config('cuelab.venue_policy');
         if ($vaping) {
-            return $this->referral($policy);
+            return $this->reply(config('cuelab.vaping_policy'), 'House rules', route('rates').'#house-rules');
         }
 
         $asksPriceOrSelection = preg_match('/\b(?:prices?|costs?|how much|magkano|what kinds? of|what (?:snacks|drinks|food)|anong)\b/iu', $message);
         $riceMeal = preg_match('/\b(?:rice[\s-]+meals?|kanin)\b/iu', $message);
         if ($menu || ($asksPriceOrSelection && ! $riceMeal)) {
             return $this->referral($policy.' Ask CueLab staff for the current menu and prices.');
-        }
-
-        if (! $bringYourOwn && preg_match('/\b(?:outside|bring|magdala|dala|baon|baunin|bitbit|magpasok)\b/iu', $message)) {
-            return $this->referral($policy.' Check with CueLab staff before bringing other food or drinks.');
         }
 
         return $this->reply($policy, 'House rules', route('rates').'#house-rules');
@@ -230,16 +226,23 @@ class CueChatController extends Controller
 
     private function approvedQuickAnswer(string $question): ?string
     {
-        $question = str_replace('wi-fi', 'wifi', $question);
+        $question = preg_replace('/\b(?:wi[\s\p{Pd}]*fi|wfi|wifii)\b/u', 'wifi', $question);
+        $question = preg_replace('/\b(?:parkin|parkng|parkign)\b/u', 'parking', $question);
 
-        // Approved venue FAQ entries 11, 14, and 15. Update these when the official FAQ changes.
+        // Approved venue FAQ entries 15, 26, and 27.
         return match ($question) {
             'do you have parking', 'is parking available', 'may parking po ba kayo', 'may parking ba kayo',
-            'where can i park', 'saan puwedeng mag-park', 'may paradahan ba' => 'Yes, parking is available.',
-            'do you have wifi', 'is there wifi', 'is wifi available', 'may wifi po ba kayo', 'may wifi ba kayo',
-            'do you have internet for guests', 'may wifi ba sa venue', 'may internet po ba' => 'Yes, Wi-Fi is available.',
+            'may paradahan ba', 'may parking po ba', 'may paradahan po ba kayo', 'meron po ba kayong parking', 'may parking ba diyan',
+            'is customer parking free', 'may bayad ba ang parking' => 'CueLab offers free reserved parking for customers. Spaces are limited.',
+            'where can i park', 'saan puwedeng mag-park' => 'CueLab offers free reserved parking for customers. Spaces are limited. Ask our team where to park when you arrive.',
+            'wifi', 'do you have wifi', 'is there wifi', 'is wifi available', 'may wifi po ba kayo', 'may wifi ba kayo', 'may wifi ba',
+            'do you have internet for guests', 'may wifi ba sa venue', 'may internet po ba', 'may wifi po ba',
+            'may wifi po ba sa inyo', 'meron po ba kayong wifi', 'may wifi ba diyan' => 'Yes, Wi-Fi is available.',
             'do you accept gcash', 'tumatanggap po ba kayo ng gcash', 'what payment methods do you accept',
-            'can i pay using bank transfer', 'do you take cash' => 'Cue Lab accepts cash, GCash, and bank transfer for drinks and billiards.',
+            'can i pay using bank transfer', 'do you take cash', 'do you accept maya', 'pwede bang maya ang bayad',
+            'do you accept debit or credit cards', 'pwede bang card ang bayad', 'pwede bang gcash ang bayad',
+            'pwede po bang magbayad gamit ang gcash', 'ano po ang mga paraan ng pagbabayad',
+            'tumatanggap ba kayo ng gcash', 'pwede po bang magbayad ng gcash' => 'CueLab accepts cash, GCash, Maya, and bank transfer. Debit and credit cards are not accepted.',
             default => null,
         };
     }
@@ -266,13 +269,27 @@ class CueChatController extends Controller
     {
         $record = $this->reservations->findForStatus($request->session()->get('booking_reference'));
         if ($record !== null) {
-            return $this->reply($record->statusHeading(), 'View booking details', route('booking.status'));
+            $message = match ($record->status) {
+                'pending' => 'Thanks for sending your request! Our team is reviewing it. You can check back here for an update.',
+                'confirmed' => 'You’re booked! We look forward to seeing you at CueLab.',
+                'rejected' => 'I’m sorry our team couldn’t approve your request. I’d be happy to help you find another time.',
+                'expired' => 'Your hold has expired. If you’d still like to play, I can help you check for another table or time.',
+                'cancelled' => 'Your booking has been cancelled. If your plans change, we’d love to see you another time.',
+                'no_show' => 'Your table was released. If you’d still like to play, I can help you check what’s available.',
+                default => $record->statusHeading(),
+            };
+            $result = $this->reply($message, 'View booking details', route('booking.status'));
+            if (in_array($record->status, ['rejected', 'expired', 'cancelled', 'no_show'], true)) {
+                $result['actions'][] = ['label' => 'Find another time', 'url' => route('booking')];
+            }
+
+            return $result;
         }
 
-        return $this->reply('Use the private lookup form to open your booking first. Then ask me again for its status.', 'Check booking status', route('booking').'#booking-lookup');
+        return $this->reply('I can help you check. Open your booking with your private code on the lookup form, then come back and ask me for an update.', 'Check booking status', route('booking').'#booking-lookup');
     }
 
-    private function referral(string $message = 'I can’t verify that here. Please contact CueLab staff.', bool $includeBooking = false): array
+    private function referral(string $message = 'I can’t verify that here. Our team can help if you get in touch.', bool $includeBooking = false): array
     {
         $result = $this->reply($message, 'Contact CueLab', route('contact'));
         if ($includeBooking) {
